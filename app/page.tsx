@@ -25,6 +25,7 @@ type Accompaniment = {
 };
 
 type ItemEdit = { qty?: number; price?: number };
+type AccompanimentContribution = { provided: boolean; responsible: string };
 type StoredCustomAccompaniment = Omit<Accompaniment, "quantity"> & { baseQty: number };
 type SavedBarbecue = {
   id: string;
@@ -43,6 +44,7 @@ type SavedBarbecue = {
   customAccompaniments: StoredCustomAccompaniment[];
   meatEdits: Record<string, ItemEdit>;
   accompanimentEdits: Record<string, ItemEdit>;
+  accompanimentContributions?: Record<string, AccompanimentContribution>;
   summary: { guests: number; grandTotal: number; perPerson: number };
 };
 type MeatCategory = "Bovinos" | "Suínos" | "Frangos";
@@ -135,6 +137,7 @@ export default function Home() {
   const [customAccompaniments, setCustomAccompaniments] = useState<Accompaniment[]>([]);
   const [meatEdits, setMeatEdits] = useState<Record<string, ItemEdit>>({});
   const [accompanimentEdits, setAccompanimentEdits] = useState<Record<string, ItemEdit>>({});
+  const [accompanimentContributions, setAccompanimentContributions] = useState<Record<string, AccompanimentContribution>>({});
   const [newMeat, setNewMeat] = useState({ name: "", category: "Bovinos" as MeatCategory, qty: "", price: "" });
   const [newAccompaniment, setNewAccompaniment] = useState({ name: "", category: "Tradicionais" as Accompaniment["category"], unit: "kg", qty: "", price: "" });
   const [reserve, setReserve] = useState(true);
@@ -183,13 +186,21 @@ export default function Home() {
         const suggestedQty = item.quantity(guests, period === "inteiro", total);
         const qty = accompanimentEdits[item.id]?.qty ?? suggestedQty;
         const price = accompanimentEdits[item.id]?.price ?? item.price;
-        return { ...item, qty, price, cost: qty * price };
+        const contribution = accompanimentContributions[item.id] ?? { provided: false, responsible: "" };
+        return {
+          ...item,
+          qty,
+          price,
+          provided: contribution.provided,
+          responsible: contribution.responsible.trim(),
+          cost: contribution.provided ? 0 : qty * price,
+        };
       });
     const extrasCost = extras.reduce((sum, item) => sum + item.cost, 0);
     const grandTotal = cost + extrasCost;
     const actualMeatKg = rows.reduce((sum, row) => sum + row.kg, 0);
     return { total: actualMeatKg, suggestedTotal: total, rows, cost, guests, extras, extrasCost, grandTotal, perPerson: guests ? grandTotal / guests : 0 };
-  }, [adults, children, period, reserve, selected, selectedAccompaniments, allMeats, allAccompaniments, meatEdits, accompanimentEdits]);
+  }, [adults, children, period, reserve, selected, selectedAccompaniments, allMeats, allAccompaniments, meatEdits, accompanimentEdits, accompanimentContributions]);
 
   function toggleMeat(id: string) {
     setSelected((current) =>
@@ -211,6 +222,13 @@ export default function Home() {
 
   function updateAccompaniment(id: string, field: keyof ItemEdit, value: number) {
     setAccompanimentEdits((current) => ({ ...current, [id]: { ...current[id], [field]: Math.max(0, value || 0) } }));
+  }
+
+  function updateContribution(id: string, changes: Partial<AccompanimentContribution>) {
+    setAccompanimentContributions((current) => ({
+      ...current,
+      [id]: { provided: false, responsible: "", ...current[id], ...changes },
+    }));
   }
 
   function addCustomMeat() {
@@ -279,6 +297,7 @@ export default function Home() {
       customAccompaniments: storedCustomAccompaniments,
       meatEdits,
       accompanimentEdits,
+      accompanimentContributions,
       summary: { guests: result.guests, grandTotal: result.grandTotal, perPerson: result.perPerson },
     };
   }
@@ -315,6 +334,7 @@ export default function Home() {
     })));
     setMeatEdits(record.meatEdits);
     setAccompanimentEdits(record.accompanimentEdits);
+    setAccompanimentContributions(record.accompanimentContributions ?? {});
     setActiveSavedId(record.id);
     setMeatMenuOpen(false);
     setAccompanimentMenuOpen(false);
@@ -382,7 +402,7 @@ export default function Home() {
   async function exportExcel() {
     const title = (value: string): Cell => ({
       value,
-      columnSpan: 6,
+      columnSpan: 8,
       fontWeight: "bold",
       fontSize: 16,
       textColor: "#FFFFFF",
@@ -393,7 +413,7 @@ export default function Home() {
     });
     const section = (value: string): Cell => ({
       value,
-      columnSpan: 6,
+      columnSpan: 8,
       fontWeight: "bold",
       textColor: "#FFFFFF",
       backgroundColor: "#17201C",
@@ -409,42 +429,46 @@ export default function Home() {
     const quantity = (value: number): Cell => ({ value, type: Number, format: "0.00", align: "right" });
     const currency = (value: number): Cell => ({ value, type: Number, format: '"R$" #,##0.00', align: "right" });
     const summary = (label: string, value: number): Cell[] => [
-      { value: label, columnSpan: 5, fontWeight: "bold", backgroundColor: "#F4F0E7" },
-      null, null, null, null,
+      { value: label, columnSpan: 7, fontWeight: "bold", backgroundColor: "#F4F0E7" },
+      null, null, null, null, null, null,
       { ...currency(value) as object, fontWeight: "bold", backgroundColor: "#F4F0E7" } as Cell,
     ];
 
     const rows: SheetData = [
-      [title("BRASA CERTA — PLANO DE CHURRASCO"), null, null, null, null, null],
-      [{ value: "Nome", fontWeight: "bold" }, eventName.trim() || "Meu churrasco", null, null, null, null],
-      [{ value: "Data", fontWeight: "bold" }, eventDate ? new Date(`${eventDate}T12:00:00`).toLocaleDateString("pt-BR") : "A definir", null, null, null, null],
-      [{ value: "Convidados", fontWeight: "bold" }, result.guests, null, null, null, null],
-      [{ value: "Período", fontWeight: "bold" }, periods[period].label, null, null, null, null],
-      [{ value: "Margem de segurança", fontWeight: "bold" }, reserve ? "10%" : "Sem margem", null, null, null, null],
+      [title("BRASA CERTA — PLANO DE CHURRASCO"), null, null, null, null, null, null, null],
+      [{ value: "Nome", fontWeight: "bold" }, eventName.trim() || "Meu churrasco", null, null, null, null, null, null],
+      [{ value: "Data", fontWeight: "bold" }, eventDate ? new Date(`${eventDate}T12:00:00`).toLocaleDateString("pt-BR") : "A definir", null, null, null, null, null, null],
+      [{ value: "Convidados", fontWeight: "bold" }, result.guests, null, null, null, null, null, null],
+      [{ value: "Período", fontWeight: "bold" }, periods[period].label, null, null, null, null, null, null],
+      [{ value: "Margem de segurança", fontWeight: "bold" }, reserve ? "10%" : "Sem margem", null, null, null, null, null, null],
       [],
-      [section("PROTEÍNAS"), null, null, null, null, null],
-      [header("Item"), header("Categoria"), header("Quantidade"), header("Unidade"), header("Valor por kg"), header("Subtotal")],
+      [section("PROTEÍNAS"), null, null, null, null, null, null, null],
+      [header("Item"), header("Categoria"), header("Quantidade"), header("Unidade"), header("Valor por kg"), header("Responsável"), header("Forma"), header("Subtotal")],
       ...result.rows.map((item): Cell[] => [
         item.name,
         meatCategory(item.id),
         quantity(item.kg),
         "kg",
         currency(item.price),
+        "—",
+        "Compra",
         currency(item.cost),
       ]),
       [],
-      [section("ACOMPANHAMENTOS"), null, null, null, null, null],
-      [header("Item"), header("Categoria"), header("Quantidade"), header("Unidade"), header("Valor unitário"), header("Subtotal")],
+      [section("ACOMPANHAMENTOS"), null, null, null, null, null, null, null],
+      [header("Item"), header("Categoria"), header("Quantidade"), header("Unidade"), header("Valor unitário"), header("Responsável"), header("Forma"), header("Subtotal")],
       ...result.extras.map((item): Cell[] => [
         item.name,
         item.category,
         quantity(item.qty),
         item.unit,
         currency(item.price),
-        currency(item.cost),
+        item.provided ? item.responsible || "A definir" : "—",
+        item.provided ? "Família traz" : "Compra",
+        item.provided ? "Não cobrar" : currency(item.cost),
       ]),
       [],
-      [section("RESUMO"), null, null, null, null, null],
+      [section("RESUMO"), null, null, null, null, null, null, null],
       summary("Total de proteínas", result.cost),
       summary("Total de acompanhamentos", result.extrasCost),
       summary("Total estimado", result.grandTotal),
@@ -455,7 +479,10 @@ export default function Home() {
       const { default: writeExcelFile } = await import("write-excel-file/universal");
       const blob = await writeExcelFile(rows, {
         sheet: "Plano do churrasco",
-        columns: [{ width: 28 }, { width: 22 }, { width: 14 }, { width: 12 }, { width: 17 }, { width: 17 }],
+        columns: [
+          { width: 28 }, { width: 22 }, { width: 14 }, { width: 12 },
+          { width: 17 }, { width: 24 }, { width: 16 }, { width: 17 },
+        ],
       }).toBlob();
       const safeName = (eventName.trim() || "plano").replace(/[<>:"/\\|?*]+/g, "-").slice(0, 60);
       const url = URL.createObjectURL(blob);
@@ -645,11 +672,31 @@ export default function Home() {
               <div className="editable-items companions">
                 <div className="editable-head"><span>Acompanhamento</span><span>Quantidade</span><span>Valor unitário</span><span /></div>
                 {result.extras.map((item) => (
-                  <div className="editable-row" key={item.id}>
+                  <div className="editable-row companion-editable-row" key={item.id}>
                     <div className="editable-name"><span className="companion-icon">{item.icon}</span><span><b>{item.name}</b><small>{item.category}</small></span></div>
                     <label><small>Qtd. ({item.unit})</small><input type="number" min="0" step=".1" value={Number(item.qty.toFixed(2))} onChange={(e) => updateAccompaniment(item.id, "qty", Number(e.target.value))} /></label>
                     <label><small>R$ por {item.unit}</small><input type="number" min="0" step=".01" value={item.price} onChange={(e) => updateAccompaniment(item.id, "price", Number(e.target.value))} /></label>
                     <button className="remove-item" onClick={() => toggleAccompaniment(item.id)} aria-label={`Remover ${item.name}`}>×</button>
+                    <div className="contribution-controls">
+                      <label className="contribution-toggle">
+                        <input
+                          type="checkbox"
+                          checked={item.provided}
+                          onChange={(e) => updateContribution(item.id, { provided: e.target.checked })}
+                        />
+                        <span><b>Uma família traz este item</b><small>Manter a quantidade, mas não cobrar no rateio.</small></span>
+                      </label>
+                      <label className="responsible-input">
+                        <span>Família ou responsável</span>
+                        <input
+                          value={item.responsible}
+                          disabled={!item.provided}
+                          onChange={(e) => updateContribution(item.id, { responsible: e.target.value })}
+                          placeholder={item.provided ? "Ex.: Família Takeya" : "Marque a opção ao lado"}
+                          maxLength={80}
+                        />
+                      </label>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -696,8 +743,15 @@ export default function Home() {
               <span>OUTROS ITENS</span>
               {result.extras.map((item) => (
                 <div key={item.name}>
-                  <p><b>{item.name}</b><small>{formatQty(item.qty, item.unit)} × {money.format(item.price)}</small></p>
-                  <strong>{money.format(item.cost)}</strong>
+                  <p>
+                    <b>{item.name}</b>
+                    <small>
+                      {item.provided
+                        ? `${formatQty(item.qty, item.unit)} · trazido por ${item.responsible || "responsável a definir"}`
+                        : `${formatQty(item.qty, item.unit)} × ${money.format(item.price)}`}
+                    </small>
+                  </p>
+                  <strong>{item.provided ? "Não cobrar" : money.format(item.cost)}</strong>
                 </div>
               ))}
             </div>
@@ -737,8 +791,18 @@ export default function Home() {
             </table>
             <h2>Acompanhamentos</h2>
             <table>
-              <thead><tr><th>Item</th><th>Categoria</th><th>Quantidade</th><th>Valor unitário</th><th>Subtotal</th></tr></thead>
-              <tbody>{result.extras.map((item) => <tr key={item.id}><td>{item.name}</td><td>{item.category}</td><td>{formatQty(item.qty, item.unit)}</td><td>{money.format(item.price)}</td><td>{money.format(item.cost)}</td></tr>)}</tbody>
+              <thead><tr><th>Item</th><th>Categoria</th><th>Quantidade</th><th>Responsável</th><th>Forma</th><th>Valor unitário</th><th>Subtotal</th></tr></thead>
+              <tbody>{result.extras.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.name}</td>
+                  <td>{item.category}</td>
+                  <td>{formatQty(item.qty, item.unit)}</td>
+                  <td>{item.provided ? item.responsible || "A definir" : "—"}</td>
+                  <td>{item.provided ? "Família traz" : "Compra"}</td>
+                  <td>{money.format(item.price)}</td>
+                  <td>{item.provided ? "Não cobrar" : money.format(item.cost)}</td>
+                </tr>
+              ))}</tbody>
             </table>
             <div className="print-totals">
               <p><span>Proteínas</span><b>{money.format(result.cost)}</b></p>
@@ -814,7 +878,13 @@ export default function Home() {
         {result.extras.length ? (
           <div className="extra-grid">
             {result.extras.map((item) => (
-              <Extra key={item.id} icon={item.icon} title={item.name} value={formatQty(item.qty, item.unit)} note={item.note} />
+              <Extra
+                key={item.id}
+                icon={item.icon}
+                title={item.name}
+                value={formatQty(item.qty, item.unit)}
+                note={item.provided ? `${item.responsible || "Responsável a definir"} traz — não entra no rateio` : item.note}
+              />
             ))}
           </div>
         ) : <p className="empty-extras">Nenhum acompanhamento selecionado. Volte à calculadora para montar sua mesa.</p>}
