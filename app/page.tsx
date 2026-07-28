@@ -1,0 +1,229 @@
+"use client";
+
+import { useMemo, useState } from "react";
+
+type Meat = {
+  id: string;
+  name: string;
+  note: string;
+  price: number;
+  share: number;
+  color: string;
+  source: string;
+};
+
+const meats: Meat[] = [
+  { id: "picanha", name: "Picanha", note: "Linha Mais", price: 79.9, share: 1.15, color: "#9d2f20", source: "https://www.swift.com.br/detail/picanha-linha-mais-kg" },
+  { id: "fraldinha", name: "Fraldinha", note: "Combo", price: 39.9, share: 1.08, color: "#c35431", source: "https://www.swift.com.br/detail/fralda-combo-kg" },
+  { id: "contra", name: "Contrafilé", note: "Combo", price: 48.9, share: 1, color: "#e17d3f", source: "https://www.swift.com.br/churrasco-swift" },
+  { id: "linguica", name: "Linguiça toscana", note: "Pacote 700 g", price: 27, share: .92, color: "#d79550", source: "https://www.swift.com.br/churrasco-swift" },
+  { id: "coracao", name: "Coração", note: "Pacote 1 kg", price: 32.9, share: .78, color: "#6c3029", source: "https://www.swift.com.br/coracao%20de%20frango%20pre%C3%A7o" },
+  { id: "suina", name: "Picanha suína", note: "Swift Grill", price: 29.9, share: .88, color: "#bd6656", source: "https://www.swift.com.br/detail/picanha-suina-grill-swift-kg" },
+];
+
+const periods = {
+  almoco: { label: "Só almoço", sub: "3–4 horas", adult: .4, child: .22 },
+  jantar: { label: "Só jantar", sub: "3–4 horas", adult: .38, child: .21 },
+  inteiro: { label: "Dia inteiro", sub: "6–8 horas", adult: .65, child: .35 },
+};
+
+const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+const number = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1, minimumFractionDigits: 1 });
+
+export default function Home() {
+  const [adults, setAdults] = useState(12);
+  const [children, setChildren] = useState(4);
+  const [period, setPeriod] = useState<keyof typeof periods>("almoco");
+  const [selected, setSelected] = useState(["picanha", "fraldinha", "linguica", "coracao"]);
+  const [reserve, setReserve] = useState(true);
+
+  const result = useMemo(() => {
+    const p = periods[period];
+    const base = adults * p.adult + children * p.child;
+    const total = base * (reserve ? 1.1 : 1);
+    const chosen = meats.filter((m) => selected.includes(m.id));
+    const shares = chosen.reduce((sum, m) => sum + m.share, 0);
+    const rows = chosen.map((m) => {
+      const kg = total * (m.share / shares);
+      return { ...m, kg, cost: kg * m.price };
+    });
+    const cost = rows.reduce((sum, row) => sum + row.cost, 0);
+    const guests = adults + children;
+    const extras = [
+      { name: "Pão de alho", qty: Math.max(1, Math.ceil(guests * 1.5 / 6)), unit: "pct. 300 g", price: 11.9 },
+      { name: "Queijo coalho", qty: Math.max(1, Math.ceil(guests / 8)), unit: "pct.", price: 28.9 },
+      { name: "Carvão", qty: Math.max(1, Math.ceil(guests / 10)), unit: "pct. 4 kg", price: 34.9 },
+      { name: "Panceta", qty: Math.max(1, Math.ceil(guests / 10)), unit: "pct. 500 g", price: 19.9 },
+    ].map((item) => ({ ...item, cost: item.qty * item.price }));
+    const extrasCost = extras.reduce((sum, item) => sum + item.cost, 0);
+    const grandTotal = cost + extrasCost;
+    return { total, rows, cost, guests, extras, extrasCost, grandTotal, perPerson: guests ? grandTotal / guests : 0 };
+  }, [adults, children, period, reserve, selected]);
+
+  function toggleMeat(id: string) {
+    setSelected((current) =>
+      current.includes(id)
+        ? current.length === 1 ? current : current.filter((item) => item !== id)
+        : [...current, id]
+    );
+  }
+
+  return (
+    <main>
+      <header className="topbar">
+        <a className="brand" href="#inicio" aria-label="Brasa Certa — início">
+          <span className="brand-mark">BC</span>
+          <span>BRASA<br /><b>CERTA</b></span>
+        </a>
+        <nav aria-label="Navegação principal">
+          <a href="#calculadora">Calculadora</a>
+          <a href="#dicas">Dicas</a>
+        </nav>
+        <a className="outline-button" href="#calculadora">Calcular agora <span>↓</span></a>
+      </header>
+
+      <section className="hero" id="inicio">
+        <div className="eyebrow"><span>•</span> Planeje sem desperdício</div>
+        <h1>Churrasco bom<br />começa na <em>conta.</em></h1>
+        <p>Descubra quanto comprar, quanto vai custar e aproveite o encontro sem faltar — nem sobrar demais.</p>
+        <div className="hero-pills">
+          <span>🔥 Cálculo em segundos</span>
+          <span>✓ Preços de referência Swift</span>
+          <span>◷ Ajustado pela duração</span>
+        </div>
+      </section>
+
+      <section className="calculator-section" id="calculadora">
+        <div className="section-intro">
+          <span className="step-label">01 — MONTE SEU CHURRASCO</span>
+          <h2>Conte pra gente<br />como vai ser.</h2>
+        </div>
+
+        <div className="calculator-grid">
+          <div className="form-panel">
+            <fieldset>
+              <legend><span>1</span> Quantas pessoas?</legend>
+              <div className="people-grid">
+                <Counter label="Adultos" hint="A partir de 13 anos" value={adults} setValue={setAdults} icon="♟" />
+                <Counter label="Crianças" hint="De 5 a 12 anos" value={children} setValue={setChildren} icon="♟" />
+              </div>
+              <p className="tiny-note">Crianças de até 4 anos não entram no cálculo.</p>
+            </fieldset>
+
+            <fieldset>
+              <legend><span>2</span> Quanto tempo vai durar?</legend>
+              <div className="period-grid">
+                {Object.entries(periods).map(([id, data]) => (
+                  <button key={id} className={`period-card ${period === id ? "active" : ""}`} onClick={() => setPeriod(id as keyof typeof periods)}>
+                    <b>{data.label}</b><small>{data.sub}</small>
+                    <i>{period === id ? "✓" : ""}</i>
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend><span>3</span> Escolha as carnes</legend>
+              <p className="field-help">Selecione pelo menos uma. A proporção é equilibrada automaticamente.</p>
+              <div className="meat-grid">
+                {meats.map((meat) => {
+                  const active = selected.includes(meat.id);
+                  return (
+                    <button key={meat.id} onClick={() => toggleMeat(meat.id)} className={`meat-card ${active ? "active" : ""}`}>
+                      <span className="meat-swatch" style={{ background: meat.color }} aria-hidden="true" />
+                      <span><b>{meat.name}</b><small>{meat.note}</small></span>
+                      <i>{active ? "✓" : "+"}</i>
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
+
+            <label className="reserve-row">
+              <input type="checkbox" checked={reserve} onChange={(e) => setReserve(e.target.checked)} />
+              <span><b>Adicionar 10% de margem de segurança</b><small>Boa ideia para turmas que comem bem.</small></span>
+            </label>
+          </div>
+
+          <aside className="result-card" aria-live="polite">
+            <div className="result-head">
+              <span>SEU PLANO DE CHURRASCO</span>
+              <b>{result.guests} convidados</b>
+              <small>{periods[period].label} · {reserve ? "com" : "sem"} margem</small>
+            </div>
+            <div className="total-meat">
+              <span>Total de carnes</span>
+              <strong>{number.format(result.total)} <small>kg</small></strong>
+              <p>≈ {Math.round(result.total * 1000 / Math.max(result.guests, 1))} g por pessoa</p>
+            </div>
+            <div className="result-list">
+              {result.rows.map((row) => (
+                <div className="result-row" key={row.id}>
+                  <span className="dot" style={{ background: row.color }} />
+                  <span><b>{row.name}</b><small>{money.format(row.price)}/kg</small></span>
+                  <strong>{number.format(row.kg)} kg</strong>
+                </div>
+              ))}
+            </div>
+            <div className="other-items">
+              <span>OUTROS ITENS</span>
+              {result.extras.map((item) => (
+                <div key={item.name}>
+                  <p><b>{item.name}</b><small>{item.qty} {item.unit} × {money.format(item.price)}</small></p>
+                  <strong>{money.format(item.cost)}</strong>
+                </div>
+              ))}
+            </div>
+            <div className="cost-box">
+              <p className="cost-line"><span>Carnes</span><b>{money.format(result.cost)}</b></p>
+              <p className="cost-line"><span>Outros itens</span><b>{money.format(result.extrasCost)}</b></p>
+              <div><span>Total estimado</span><strong>{money.format(result.grandTotal)}</strong></div>
+              <p>{money.format(result.perPerson)} por convidado no rateio</p>
+            </div>
+            <a className="swift-link" href="https://www.swift.com.br/churrasco-swift" target="_blank" rel="noreferrer">
+              Conferir preços na Swift <span>↗</span>
+            </a>
+            <p className="price-note">Preços de referência consultados em 28/07/2026. Podem variar por CEP, estoque e promoções.</p>
+          </aside>
+        </div>
+      </section>
+
+      <section className="extras" id="dicas">
+        <div>
+          <span className="step-label light">02 — NÃO ESQUEÇA</span>
+          <h2>O resto da mesa,<br /><em>na medida.</em></h2>
+        </div>
+        <div className="extra-grid">
+          <Extra icon="🥖" title="Pão de alho" value={`${Math.ceil(result.guests * 1.5)} unidades`} note="1 a 2 por pessoa" />
+          <Extra icon="🥤" title="Bebidas" value={`${number.format(result.guests * (period === "inteiro" ? 1.8 : 1.2))} litros`} note="Água e refrigerante" />
+          <Extra icon="🧊" title="Gelo" value={`${Math.ceil(result.guests / 5) * 5} kg`} note="Consumo + conservação" />
+          <Extra icon="🧂" title="Sal grosso" value={`${Math.max(1, Math.ceil(result.total / 8))} pacote(s)`} note="Pacotes de 1 kg" />
+        </div>
+        <p className="tip">Dica da casa: compre as bebidas por último e confirme quantas pessoas realmente bebem álcool.</p>
+      </section>
+
+      <footer>
+        <div className="brand footer-brand"><span className="brand-mark">BC</span><span>BRASA<br /><b>CERTA</b></span></div>
+        <p>Feito para juntar gente.<br />Calculado para não desperdiçar.</p>
+        <span>Estimativas para planejamento • 2026</span>
+      </footer>
+    </main>
+  );
+}
+
+function Counter({ label, hint, value, setValue, icon }: { label: string; hint: string; value: number; setValue: (n: number) => void; icon: string }) {
+  return (
+    <div className="counter-card">
+      <div className="counter-label"><span>{icon}</span><div><b>{label}</b><small>{hint}</small></div></div>
+      <div className="counter">
+        <button aria-label={`Diminuir ${label}`} onClick={() => setValue(Math.max(0, value - 1))}>−</button>
+        <input aria-label={label} type="number" min="0" max="500" value={value} onChange={(e) => setValue(Math.max(0, Math.min(500, Number(e.target.value))))} />
+        <button aria-label={`Aumentar ${label}`} onClick={() => setValue(Math.min(500, value + 1))}>+</button>
+      </div>
+    </div>
+  );
+}
+
+function Extra({ icon, title, value, note }: { icon: string; title: string; value: string; note: string }) {
+  return <article className="extra-card"><span>{icon}</span><div><small>{title}</small><b>{value}</b><p>{note}</p></div></article>;
+}
