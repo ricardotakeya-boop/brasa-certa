@@ -99,7 +99,7 @@ const meatCategory = (id: string): MeatCategory =>
       : "Bovinos";
 
 const accompaniments: Accompaniment[] = [
-  { id: "pao-alho", name: "Pão de alho", category: "Tradicionais", icon: "🥖", note: "1 a 2 por pessoa", unit: "un.", price: 1.98, quantity: (g) => Math.ceil(g * 1.5) },
+  { id: "pao-alho", name: "Pão de alho", category: "Tradicionais", icon: "🥖", note: "Pacotes com 6 unidades", unit: "un.", price: 1.98, quantity: (g) => Math.ceil((g * 1.5) / 6) * 6 },
   { id: "arroz", name: "Arroz", category: "Tradicionais", icon: "🍚", note: "60 g por pessoa", unit: "kg", price: 8.5, quantity: (g) => g * .06 },
   { id: "farofa", name: "Farofa", category: "Tradicionais", icon: "🥣", note: "40 g por pessoa", unit: "kg", price: 21.9, quantity: (g) => g * .04 },
   { id: "queijo", name: "Queijo coalho", category: "Tradicionais", icon: "🧀", note: "2 espetos por pessoa", unit: "kg", price: 54.9, quantity: (g) => g * .08 },
