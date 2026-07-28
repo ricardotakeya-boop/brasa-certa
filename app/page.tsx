@@ -97,7 +97,7 @@ const meatCategory = (id: string): MeatCategory =>
 
 const accompaniments: Accompaniment[] = [
   { id: "pao-alho", name: "Pão de alho", category: "Tradicionais", icon: "🥖", note: "1 a 2 por pessoa", unit: "un.", price: 1.98, quantity: (g) => Math.ceil(g * 1.5) },
-  { id: "arroz", name: "Arroz cru", category: "Tradicionais", icon: "🍚", note: "60 g por pessoa", unit: "kg", price: 8.5, quantity: (g) => g * .06 },
+  { id: "arroz", name: "Arroz", category: "Tradicionais", icon: "🍚", note: "60 g por pessoa", unit: "kg", price: 8.5, quantity: (g) => g * .06 },
   { id: "farofa", name: "Farofa", category: "Tradicionais", icon: "🥣", note: "40 g por pessoa", unit: "kg", price: 21.9, quantity: (g) => g * .04 },
   { id: "queijo", name: "Queijo coalho", category: "Tradicionais", icon: "🧀", note: "2 espetos por pessoa", unit: "kg", price: 54.9, quantity: (g) => g * .08 },
   { id: "vinagrete", name: "Vinagrete", category: "Saladas e legumes", icon: "🍅", note: "80 g por pessoa", unit: "kg", price: 13.9, quantity: (g) => g * .08 },
@@ -125,10 +125,10 @@ export default function Home() {
   const [adults, setAdults] = useState(12);
   const [children, setChildren] = useState(4);
   const [period, setPeriod] = useState<keyof typeof periods>("almoco");
-  const [selected, setSelected] = useState(["picanha-legado", "fraldinha-legado", "linguica", "costelinha-suina"]);
+  const [selected, setSelected] = useState<string[]>([]);
   const [meatMenuOpen, setMeatMenuOpen] = useState(false);
   const [meatSearch, setMeatSearch] = useState("");
-  const [selectedAccompaniments, setSelectedAccompaniments] = useState(["pao-alho", "arroz", "vinagrete", "farofa", "agua-refri", "carvao", "gelo", "sal"]);
+  const [selectedAccompaniments, setSelectedAccompaniments] = useState<string[]>([]);
   const [accompanimentMenuOpen, setAccompanimentMenuOpen] = useState(false);
   const [customMeats, setCustomMeats] = useState<Meat[]>([]);
   const [customAccompaniments, setCustomAccompaniments] = useState<Accompaniment[]>([]);
@@ -193,7 +193,7 @@ export default function Home() {
   function toggleMeat(id: string) {
     setSelected((current) =>
       current.includes(id)
-        ? current.length === 1 ? current : current.filter((item) => item !== id)
+        ? current.filter((item) => item !== id)
         : [...current, id]
     );
   }
@@ -494,7 +494,7 @@ export default function Home() {
               <p className="field-help">Abra o combo e escolha quantas quiser. A proporção é equilibrada automaticamente.</p>
               <div className="meat-combo">
                 <button className="combo-trigger" onClick={() => setMeatMenuOpen((open) => !open)} aria-expanded={meatMenuOpen}>
-                  <span><b>{selected.length} carnes selecionadas</b><small>Legado, Gran Reserva, suínos, aves e linguiças</small></span>
+                  <span><b>{selected.length ? `${selected.length} carne(s) selecionada(s)` : "Nenhuma carne selecionada"}</b><small>Legado, Gran Reserva, suínos, aves e linguiças</small></span>
                   <i>{meatMenuOpen ? "−" : "+"}</i>
                 </button>
                 {meatMenuOpen && (
@@ -558,7 +558,7 @@ export default function Home() {
               <p className="field-help">Selecione os itens que deseja incluir na lista e no orçamento.</p>
               <div className="meat-combo">
                 <button className="combo-trigger" onClick={() => setAccompanimentMenuOpen((open) => !open)} aria-expanded={accompanimentMenuOpen}>
-                  <span><b>{selectedAccompaniments.length} acompanhamentos selecionados</b><small>Tradicionais, saladas, bebidas e apoio</small></span>
+                  <span><b>{selectedAccompaniments.length ? `${selectedAccompaniments.length} acompanhamento(s) selecionado(s)` : "Nenhum acompanhamento selecionado"}</b><small>Tradicionais, saladas, bebidas e apoio</small></span>
                   <i>{accompanimentMenuOpen ? "−" : "+"}</i>
                 </button>
                 {accompanimentMenuOpen && (
