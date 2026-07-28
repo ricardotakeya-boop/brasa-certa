@@ -13,12 +13,30 @@ type Meat = {
 };
 
 const meats: Meat[] = [
-  { id: "picanha", name: "Picanha", note: "Linha Mais", price: 79.9, share: 1.15, color: "#9d2f20", source: "https://www.swift.com.br/detail/picanha-linha-mais-kg" },
-  { id: "fraldinha", name: "Fraldinha", note: "Combo", price: 39.9, share: 1.08, color: "#c35431", source: "https://www.swift.com.br/detail/fralda-combo-kg" },
-  { id: "contra", name: "Contrafilé", note: "Combo", price: 48.9, share: 1, color: "#e17d3f", source: "https://www.swift.com.br/churrasco-swift" },
-  { id: "linguica", name: "Linguiça toscana", note: "Pacote 700 g", price: 27, share: .92, color: "#d79550", source: "https://www.swift.com.br/churrasco-swift" },
-  { id: "coracao", name: "Coração", note: "Pacote 1 kg", price: 32.9, share: .78, color: "#6c3029", source: "https://www.swift.com.br/coracao%20de%20frango%20pre%C3%A7o" },
-  { id: "suina", name: "Picanha suína", note: "Swift Grill", price: 29.9, share: .88, color: "#bd6656", source: "https://www.swift.com.br/detail/picanha-suina-grill-swift-kg" },
+  { id: "picanha-legado", name: "Picanha", note: "Legado 1855", price: 89.9, share: 1.15, color: "#8e261c", source: "https://www.swift.com.br/legado" },
+  { id: "medalhao-legado", name: "Medalhão de picanha", note: "Legado 1855", price: 59.9, share: 1.08, color: "#ad3827", source: "https://www.swift.com.br/swift-legado" },
+  { id: "chorizo-legado", name: "Bife de chorizo", note: "Legado 1855", price: 65.9, share: 1.05, color: "#bf4931", source: "https://www.swift.com.br/swift-legado" },
+  { id: "ancho-legado", name: "Bife ancho", note: "Legado 1855", price: 59.9, share: 1.05, color: "#d45b36", source: "https://www.swift.com.br/swift-legado" },
+  { id: "fraldinha-legado", name: "Fraldinha", note: "Legado 1855", price: 69.9, share: 1.08, color: "#c35431", source: "https://www.swift.com.br/fraldinha-swift-legado-1855-kg/p" },
+  { id: "maminha-legado", name: "Maminha", note: "Legado 1855", price: 65.9, share: 1, color: "#e17d3f", source: "https://www.swift.com.br/legado" },
+  { id: "bombom-legado", name: "Bombom de alcatra", note: "Legado 1855", price: 69.9, share: 1, color: "#cc673c", source: "https://www.swift.com.br/swift-legado" },
+  { id: "assado-legado", name: "Assado de tiras", note: "Legado 1855", price: 57.9, share: 1.08, color: "#9f422c", source: "https://www.swift.com.br/legado" },
+  { id: "cupim-legado", name: "Cupim", note: "Legado 1855", price: 59.9, share: 1.05, color: "#b45a38", source: "https://www.swift.com.br/legado" },
+  { id: "entrana-legado", name: "Entraña", note: "Legado 1855", price: 59.9, share: 1, color: "#7f3024", source: "https://www.swift.com.br/legado" },
+  { id: "picanha-gran", name: "Picanha", note: "Gran Reserva", price: 195.9, share: 1.15, color: "#702118", source: "https://loja.swift.com.br/cortes-especiais/gran%20reserva" },
+  { id: "ancho-gran", name: "Bife ancho", note: "Gran Reserva", price: 139.9, share: 1.05, color: "#952f20", source: "https://www.swift.com.br/festival-gran-reserva" },
+  { id: "fraldinha-gran", name: "Fraldinha Red", note: "Gran Reserva", price: 149.9, share: 1.08, color: "#b13b29", source: "https://loja.swift.com.br/cortes-especiais/gran%20reserva" },
+  { id: "maminha-gran", name: "Maminha", note: "Gran Reserva", price: 75.9, share: 1, color: "#c55b36", source: "https://loja.swift.com.br/cortes-especiais/gran%20reserva" },
+  { id: "assado-gran", name: "Assado de tiras", note: "Gran Reserva", price: 75.9, share: 1.08, color: "#93442e", source: "https://www.swift.com.br/festival-gran-reserva" },
+  { id: "short-rib-gran", name: "Short rib", note: "Gran Reserva", price: 89.9, share: 1.08, color: "#803629", source: "https://loja.swift.com.br/cortes-especiais/gran-reserva/carnes" },
+  { id: "tomahawk-gran", name: "Tomahawk", note: "Gran Reserva", price: 154.9, share: 1.12, color: "#5e251e", source: "https://loja.swift.com.br/cortes-especiais/gran-reserva/carnes" },
+  { id: "costela-bafo-gran", name: "Costela bafo", note: "Gran Reserva", price: 36.9, share: 1.25, color: "#6f3529", source: "https://loja.swift.com.br/cortes-especiais/gran%20reserva" },
+  { id: "costelinha-suina", name: "Costelinha suína", note: "Swift Premium", price: 38.9, share: 1.15, color: "#bd6656", source: "https://www.swift.com.br/detail/costelinha-suina-premium-swift-kg" },
+  { id: "picanha-suina", name: "Picanha suína", note: "Swift Grill", price: 29.9, share: .95, color: "#ce7968", source: "https://www.swift.com.br/detail/picanha-suina-grill-swift-kg" },
+  { id: "linguica", name: "Linguiça toscana", note: "Swift 700 g", price: 27, share: .88, color: "#d79550", source: "https://www.swift.com.br/churrasco-swift" },
+  { id: "coracao", name: "Coração de frango", note: "Swift 1 kg", price: 32.9, share: .76, color: "#6c3029", source: "https://www.swift.com.br/coracao%20de%20frango%20pre%C3%A7o" },
+  { id: "panceta", name: "Panceta em espetinho", note: "Swift 500 g", price: 39.8, share: .82, color: "#d8896d", source: "https://www.swift.com.br/costelinha%20su%C3%ADna" },
+  { id: "frango", name: "Coxa e sobrecoxa", note: "Swift temperada", price: 22.9, share: .9, color: "#d8a05f", source: "https://www.swift.com.br/churrasco-swift" },
 ];
 
 const periods = {
@@ -34,7 +52,9 @@ export default function Home() {
   const [adults, setAdults] = useState(12);
   const [children, setChildren] = useState(4);
   const [period, setPeriod] = useState<keyof typeof periods>("almoco");
-  const [selected, setSelected] = useState(["picanha", "fraldinha", "linguica", "coracao"]);
+  const [selected, setSelected] = useState(["picanha-legado", "fraldinha-legado", "linguica", "costelinha-suina"]);
+  const [meatMenuOpen, setMeatMenuOpen] = useState(false);
+  const [meatSearch, setMeatSearch] = useState("");
   const [reserve, setReserve] = useState(true);
 
   const result = useMemo(() => {
@@ -124,9 +144,32 @@ export default function Home() {
 
             <fieldset>
               <legend><span>3</span> Escolha as carnes</legend>
-              <p className="field-help">Selecione pelo menos uma. A proporção é equilibrada automaticamente.</p>
-              <div className="meat-grid">
-                {meats.map((meat) => {
+              <p className="field-help">Abra o combo e escolha quantas quiser. A proporção é equilibrada automaticamente.</p>
+              <div className="meat-combo">
+                <button className="combo-trigger" onClick={() => setMeatMenuOpen((open) => !open)} aria-expanded={meatMenuOpen}>
+                  <span><b>{selected.length} carnes selecionadas</b><small>Legado, Gran Reserva, suínos, aves e linguiças</small></span>
+                  <i>{meatMenuOpen ? "−" : "+"}</i>
+                </button>
+                {meatMenuOpen && (
+                  <div className="combo-menu">
+                    <input autoFocus type="search" value={meatSearch} onChange={(e) => setMeatSearch(e.target.value)} placeholder="Buscar carne ou linha..." aria-label="Buscar carne" />
+                    <div className="combo-options">
+                      {meats.filter((meat) => `${meat.name} ${meat.note}`.toLowerCase().includes(meatSearch.toLowerCase())).map((meat) => {
+                        const active = selected.includes(meat.id);
+                        return (
+                          <button key={meat.id} onClick={() => toggleMeat(meat.id)} className={active ? "active" : ""}>
+                            <span className="meat-swatch" style={{ background: meat.color }} aria-hidden="true" />
+                            <span><b>{meat.name}</b><small>{meat.note} · {money.format(meat.price)}/kg</small></span>
+                            <i>{active ? "✓" : "+"}</i>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="selected-meats">
+                {meats.filter((meat) => selected.includes(meat.id)).map((meat) => {
                   const active = selected.includes(meat.id);
                   return (
                     <button key={meat.id} onClick={() => toggleMeat(meat.id)} className={`meat-card ${active ? "active" : ""}`}>
@@ -180,8 +223,8 @@ export default function Home() {
               <div><span>Total estimado</span><strong>{money.format(result.grandTotal)}</strong></div>
               <p>{money.format(result.perPerson)} por convidado no rateio</p>
             </div>
-            <a className="swift-link" href="https://www.swift.com.br/churrasco-swift" target="_blank" rel="noreferrer">
-              Conferir preços na Swift <span>↗</span>
+            <a className="swift-link" href="https://www.swift.com.br/swift-legado" target="_blank" rel="noreferrer">
+              Conferir linha Legado <span>↗</span>
             </a>
             <p className="price-note">Preços de referência consultados em 28/07/2026. Podem variar por CEP, estoque e promoções.</p>
           </aside>
@@ -190,11 +233,15 @@ export default function Home() {
 
       <section className="extras" id="dicas">
         <div>
-          <span className="step-label light">02 — NÃO ESQUEÇA</span>
-          <h2>O resto da mesa,<br /><em>na medida.</em></h2>
+          <span className="step-label light">02 — ACOMPANHAMENTOS</span>
+          <h2>Complete a mesa,<br /><em>na medida.</em></h2>
         </div>
         <div className="extra-grid">
           <Extra icon="🥖" title="Pão de alho" value={`${Math.ceil(result.guests * 1.5)} unidades`} note="1 a 2 por pessoa" />
+          <Extra icon="🍚" title="Arroz cru" value={`${number.format(result.guests * .06)} kg`} note="Cerca de 60 g por pessoa" />
+          <Extra icon="🍅" title="Vinagrete" value={`${number.format(result.guests * .08)} kg`} note="Cerca de 80 g por pessoa" />
+          <Extra icon="🥕" title="Legumes na brasa" value={`${number.format(result.guests * .1)} kg`} note="Abobrinha, cebola e pimentão" />
+          <Extra icon="🥣" title="Farofa" value={`${number.format(result.guests * .04)} kg`} note="Cerca de 40 g por pessoa" />
           <Extra icon="🥤" title="Bebidas" value={`${number.format(result.guests * (period === "inteiro" ? 1.8 : 1.2))} litros`} note="Água e refrigerante" />
           <Extra icon="🧊" title="Gelo" value={`${Math.ceil(result.guests / 5) * 5} kg`} note="Consumo + conservação" />
           <Extra icon="🧂" title="Sal grosso" value={`${Math.max(1, Math.ceil(result.total / 8))} pacote(s)`} note="Pacotes de 1 kg" />
