@@ -23,6 +23,9 @@ type Accompaniment = {
   quantity: (guests: number, allDay: boolean, meatKg: number) => number;
 };
 
+type ItemEdit = { qty?: number; price?: number };
+type MeatCategory = "Bovinos" | "Suínos" | "Frangos";
+
 const meats: Meat[] = [
   { id: "picanha-legado", name: "Picanha", note: "Legado 1855", price: 89.9, share: 1.15, color: "#8e261c", source: "https://www.swift.com.br/legado" },
   { id: "medalhao-legado", name: "Medalhão de picanha", note: "Legado 1855", price: 59.9, share: 1.08, color: "#ad3827", source: "https://www.swift.com.br/swift-legado" },
@@ -58,10 +61,17 @@ const meats: Meat[] = [
 ];
 
 const meatGroups = [
-  { label: "Bovinos", icon: "●", test: (id: string) => !["costelinha-suina", "picanha-suina", "ancho-suino", "lombo-suino", "costela-alecrim", "espetinho-suino", "linguica", "panceta", "coracao", "file-coxa", "tulipa", "coxinha-asa", "asa-frango"].includes(id) },
-  { label: "Suínos", icon: "◆", test: (id: string) => ["costelinha-suina", "picanha-suina", "ancho-suino", "lombo-suino", "costela-alecrim", "espetinho-suino", "linguica", "panceta"].includes(id) },
-  { label: "Frangos", icon: "▲", test: (id: string) => ["coracao", "file-coxa", "tulipa", "coxinha-asa", "asa-frango"].includes(id) },
+  { label: "Bovinos" as MeatCategory, icon: "●" },
+  { label: "Suínos" as MeatCategory, icon: "◆" },
+  { label: "Frangos" as MeatCategory, icon: "▲" },
 ];
+
+const porkIds = ["costelinha-suina", "picanha-suina", "ancho-suino", "lombo-suino", "costela-alecrim", "espetinho-suino", "linguica", "panceta"];
+const chickenIds = ["coracao", "file-coxa", "tulipa", "coxinha-asa", "asa-frango"];
+const meatCategory = (id: string): MeatCategory =>
+  id.startsWith("custom-suinos") || porkIds.includes(id) ? "Suínos"
+    : id.startsWith("custom-frangos") || chickenIds.includes(id) ? "Frangos"
+      : "Bovinos";
 
 const accompaniments: Accompaniment[] = [
   { id: "pao-alho", name: "Pão de alho", category: "Tradicionais", icon: "🥖", note: "1 a 2 por pessoa", unit: "un.", price: 1.98, quantity: (g) => Math.ceil(g * 1.5) },
@@ -98,30 +108,43 @@ export default function Home() {
   const [meatSearch, setMeatSearch] = useState("");
   const [selectedAccompaniments, setSelectedAccompaniments] = useState(["pao-alho", "arroz", "vinagrete", "farofa", "agua-refri", "carvao", "gelo", "sal"]);
   const [accompanimentMenuOpen, setAccompanimentMenuOpen] = useState(false);
+  const [customMeats, setCustomMeats] = useState<Meat[]>([]);
+  const [customAccompaniments, setCustomAccompaniments] = useState<Accompaniment[]>([]);
+  const [meatEdits, setMeatEdits] = useState<Record<string, ItemEdit>>({});
+  const [accompanimentEdits, setAccompanimentEdits] = useState<Record<string, ItemEdit>>({});
+  const [newMeat, setNewMeat] = useState({ name: "", category: "Bovinos" as MeatCategory, qty: "", price: "" });
+  const [newAccompaniment, setNewAccompaniment] = useState({ name: "", category: "Tradicionais" as Accompaniment["category"], unit: "kg", qty: "", price: "" });
   const [reserve, setReserve] = useState(true);
+  const allMeats = [...meats, ...customMeats];
+  const allAccompaniments = [...accompaniments, ...customAccompaniments];
 
   const result = useMemo(() => {
     const p = periods[period];
     const base = adults * p.adult + children * p.child;
     const total = base * (reserve ? 1.1 : 1);
-    const chosen = meats.filter((m) => selected.includes(m.id));
+    const chosen = allMeats.filter((m) => selected.includes(m.id));
     const shares = chosen.reduce((sum, m) => sum + m.share, 0);
     const rows = chosen.map((m) => {
-      const kg = total * (m.share / shares);
-      return { ...m, kg, cost: kg * m.price };
+      const suggestedKg = shares ? total * (m.share / shares) : 0;
+      const kg = meatEdits[m.id]?.qty ?? suggestedKg;
+      const price = meatEdits[m.id]?.price ?? m.price;
+      return { ...m, kg, price, cost: kg * price };
     });
     const cost = rows.reduce((sum, row) => sum + row.cost, 0);
     const guests = adults + children;
-    const extras = accompaniments
+    const extras = allAccompaniments
       .filter((item) => selectedAccompaniments.includes(item.id))
       .map((item) => {
-        const qty = item.quantity(guests, period === "inteiro", total);
-        return { ...item, qty, cost: qty * item.price };
+        const suggestedQty = item.quantity(guests, period === "inteiro", total);
+        const qty = accompanimentEdits[item.id]?.qty ?? suggestedQty;
+        const price = accompanimentEdits[item.id]?.price ?? item.price;
+        return { ...item, qty, price, cost: qty * price };
       });
     const extrasCost = extras.reduce((sum, item) => sum + item.cost, 0);
     const grandTotal = cost + extrasCost;
-    return { total, rows, cost, guests, extras, extrasCost, grandTotal, perPerson: guests ? grandTotal / guests : 0 };
-  }, [adults, children, period, reserve, selected, selectedAccompaniments]);
+    const actualMeatKg = rows.reduce((sum, row) => sum + row.kg, 0);
+    return { total: actualMeatKg, suggestedTotal: total, rows, cost, guests, extras, extrasCost, grandTotal, perPerson: guests ? grandTotal / guests : 0 };
+  }, [adults, children, period, reserve, selected, selectedAccompaniments, customMeats, customAccompaniments, meatEdits, accompanimentEdits]);
 
   function toggleMeat(id: string) {
     setSelected((current) =>
@@ -135,6 +158,43 @@ export default function Home() {
     setSelectedAccompaniments((current) =>
       current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
     );
+  }
+
+  function updateMeat(id: string, field: keyof ItemEdit, value: number) {
+    setMeatEdits((current) => ({ ...current, [id]: { ...current[id], [field]: Math.max(0, value || 0) } }));
+  }
+
+  function updateAccompaniment(id: string, field: keyof ItemEdit, value: number) {
+    setAccompanimentEdits((current) => ({ ...current, [id]: { ...current[id], [field]: Math.max(0, value || 0) } }));
+  }
+
+  function addCustomMeat() {
+    const name = newMeat.name.trim();
+    const qty = Number(newMeat.qty);
+    const price = Number(newMeat.price);
+    if (!name || qty <= 0) return;
+    const id = `custom-${newMeat.category === "Suínos" ? "suinos" : newMeat.category === "Frangos" ? "frangos" : "bovinos"}-${Date.now()}`;
+    const item: Meat = { id, name, note: "Item personalizado", price: Math.max(0, price), share: 1, color: "#8f5745", source: "" };
+    setCustomMeats((current) => [...current, item]);
+    setSelected((current) => [...current, id]);
+    setMeatEdits((current) => ({ ...current, [id]: { qty, price: Math.max(0, price) } }));
+    setNewMeat({ name: "", category: newMeat.category, qty: "", price: "" });
+  }
+
+  function addCustomAccompaniment() {
+    const name = newAccompaniment.name.trim();
+    const qty = Number(newAccompaniment.qty);
+    const price = Number(newAccompaniment.price);
+    if (!name || qty <= 0) return;
+    const id = `custom-accompaniment-${Date.now()}`;
+    const item: Accompaniment = {
+      id, name, category: newAccompaniment.category, icon: "＋", note: "Item personalizado",
+      unit: newAccompaniment.unit, price: Math.max(0, price), quantity: () => qty,
+    };
+    setCustomAccompaniments((current) => [...current, item]);
+    setSelectedAccompaniments((current) => [...current, id]);
+    setAccompanimentEdits((current) => ({ ...current, [id]: { qty, price: Math.max(0, price) } }));
+    setNewAccompaniment({ name: "", category: newAccompaniment.category, unit: newAccompaniment.unit, qty: "", price: "" });
   }
 
   return (
@@ -208,8 +268,8 @@ export default function Home() {
                     <input autoFocus type="search" value={meatSearch} onChange={(e) => setMeatSearch(e.target.value)} placeholder="Buscar carne ou linha..." aria-label="Buscar carne" />
                     <div className="combo-options">
                       {meatGroups.map((group) => {
-                        const options = meats.filter((meat) =>
-                          group.test(meat.id) && `${meat.name} ${meat.note}`.toLowerCase().includes(meatSearch.toLowerCase())
+                        const options = allMeats.filter((meat) =>
+                          meatCategory(meat.id) === group.label && `${meat.name} ${meat.note}`.toLowerCase().includes(meatSearch.toLowerCase())
                         );
                         if (!options.length) return null;
                         return (
@@ -232,17 +292,29 @@ export default function Home() {
                   </div>
                 )}
               </div>
-              <div className="selected-meats">
-                {meats.filter((meat) => selected.includes(meat.id)).map((meat) => {
-                  const active = selected.includes(meat.id);
-                  return (
-                    <button key={meat.id} onClick={() => toggleMeat(meat.id)} className={`meat-card ${active ? "active" : ""}`}>
-                      <span className="meat-swatch" style={{ background: meat.color }} aria-hidden="true" />
+              <div className="editable-items">
+                <div className="editable-head"><span>Proteína</span><span>Quantidade (kg)</span><span>Valor por kg</span><span /></div>
+                {result.rows.map((meat) => (
+                  <div className="editable-row" key={meat.id}>
+                    <div className="editable-name">
+                      <span className="dot" style={{ background: meat.color }} />
                       <span><b>{meat.name}</b><small>{meat.note}</small></span>
-                      <i>{active ? "✓" : "+"}</i>
-                    </button>
-                  );
-                })}
+                    </div>
+                    <label><small>Quantidade (kg)</small><input type="number" min="0" step=".1" value={Number(meat.kg.toFixed(2))} onChange={(e) => updateMeat(meat.id, "qty", Number(e.target.value))} /></label>
+                    <label><small>R$ por kg</small><input type="number" min="0" step=".01" value={meat.price} onChange={(e) => updateMeat(meat.id, "price", Number(e.target.value))} /></label>
+                    <button className="remove-item" onClick={() => toggleMeat(meat.id)} aria-label={`Remover ${meat.name}`}>×</button>
+                  </div>
+                ))}
+              </div>
+              <div className="custom-item">
+                <h3>Adicionar outra proteína ou marca</h3>
+                <div className="custom-item-grid protein">
+                  <label><span>Nome da carne</span><input value={newMeat.name} onChange={(e) => setNewMeat({ ...newMeat, name: e.target.value })} placeholder="Ex.: Costela de outra marca" /></label>
+                  <label><span>Categoria</span><select value={newMeat.category} onChange={(e) => setNewMeat({ ...newMeat, category: e.target.value as MeatCategory })}><option>Bovinos</option><option>Suínos</option><option>Frangos</option></select></label>
+                  <label><span>Quantidade (kg)</span><input type="number" min="0" step=".1" value={newMeat.qty} onChange={(e) => setNewMeat({ ...newMeat, qty: e.target.value })} placeholder="0,0" /></label>
+                  <label><span>Valor por kg</span><input type="number" min="0" step=".01" value={newMeat.price} onChange={(e) => setNewMeat({ ...newMeat, price: e.target.value })} placeholder="R$ 0,00" /></label>
+                  <button onClick={addCustomMeat}>Adicionar</button>
+                </div>
               </div>
             </fieldset>
 
@@ -259,8 +331,8 @@ export default function Home() {
                     <div className="combo-options">
                       {(["Tradicionais", "Saladas e legumes", "Bebidas", "Apoio"] as const).map((category) => (
                         <section className="option-group" key={category}>
-                          <h3>{category}<small>{accompaniments.filter((item) => item.category === category).length} opções</small></h3>
-                          {accompaniments.filter((item) => item.category === category).map((item) => {
+                          <h3>{category}<small>{allAccompaniments.filter((item) => item.category === category).length} opções</small></h3>
+                          {allAccompaniments.filter((item) => item.category === category).map((item) => {
                             const active = selectedAccompaniments.includes(item.id);
                             return (
                               <button key={item.id} onClick={() => toggleAccompaniment(item.id)} className={active ? "active" : ""}>
@@ -276,12 +348,27 @@ export default function Home() {
                   </div>
                 )}
               </div>
-              <div className="selected-companions">
-                {accompaniments.filter((item) => selectedAccompaniments.includes(item.id)).map((item) => (
-                  <button key={item.id} onClick={() => toggleAccompaniment(item.id)}>
-                    <span>{item.icon}</span>{item.name}<i>×</i>
-                  </button>
+              <div className="editable-items companions">
+                <div className="editable-head"><span>Acompanhamento</span><span>Quantidade</span><span>Valor unitário</span><span /></div>
+                {result.extras.map((item) => (
+                  <div className="editable-row" key={item.id}>
+                    <div className="editable-name"><span className="companion-icon">{item.icon}</span><span><b>{item.name}</b><small>{item.category}</small></span></div>
+                    <label><small>Qtd. ({item.unit})</small><input type="number" min="0" step=".1" value={Number(item.qty.toFixed(2))} onChange={(e) => updateAccompaniment(item.id, "qty", Number(e.target.value))} /></label>
+                    <label><small>R$ por {item.unit}</small><input type="number" min="0" step=".01" value={item.price} onChange={(e) => updateAccompaniment(item.id, "price", Number(e.target.value))} /></label>
+                    <button className="remove-item" onClick={() => toggleAccompaniment(item.id)} aria-label={`Remover ${item.name}`}>×</button>
+                  </div>
                 ))}
+              </div>
+              <div className="custom-item">
+                <h3>Adicionar outro acompanhamento</h3>
+                <div className="custom-item-grid">
+                  <label><span>Nome do item</span><input value={newAccompaniment.name} onChange={(e) => setNewAccompaniment({ ...newAccompaniment, name: e.target.value })} placeholder="Ex.: Mandioca cozida" /></label>
+                  <label><span>Categoria</span><select value={newAccompaniment.category} onChange={(e) => setNewAccompaniment({ ...newAccompaniment, category: e.target.value as Accompaniment["category"] })}><option>Tradicionais</option><option>Saladas e legumes</option><option>Bebidas</option><option>Apoio</option></select></label>
+                  <label><span>Unidade</span><select value={newAccompaniment.unit} onChange={(e) => setNewAccompaniment({ ...newAccompaniment, unit: e.target.value })}><option value="kg">kg</option><option value="L">litros</option><option value="un.">unidades</option><option value="pct.">pacotes</option></select></label>
+                  <label><span>Quantidade</span><input type="number" min="0" step=".1" value={newAccompaniment.qty} onChange={(e) => setNewAccompaniment({ ...newAccompaniment, qty: e.target.value })} placeholder="0,0" /></label>
+                  <label><span>Valor por unidade</span><input type="number" min="0" step=".01" value={newAccompaniment.price} onChange={(e) => setNewAccompaniment({ ...newAccompaniment, price: e.target.value })} placeholder="R$ 0,00" /></label>
+                  <button onClick={addCustomAccompaniment}>Adicionar</button>
+                </div>
               </div>
             </fieldset>
 
@@ -324,7 +411,11 @@ export default function Home() {
               <p className="cost-line"><span>Carnes</span><b>{money.format(result.cost)}</b></p>
               <p className="cost-line"><span>Outros itens</span><b>{money.format(result.extrasCost)}</b></p>
               <div><span>Total estimado</span><strong>{money.format(result.grandTotal)}</strong></div>
-              <p>{money.format(result.perPerson)} por convidado no rateio</p>
+            </div>
+            <div className="per-person-total">
+              <span>VALOR ESTIMADO POR PESSOA</span>
+              <strong>{money.format(result.perPerson)}</strong>
+              <small>Rateio entre {result.guests || 0} convidados</small>
             </div>
             <a className="swift-link" href="https://www.swift.com.br/swift-legado" target="_blank" rel="noreferrer">
               Conferir linha Legado <span>↗</span>
