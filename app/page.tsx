@@ -197,6 +197,39 @@ export default function Home() {
     setNewAccompaniment({ name: "", category: newAccompaniment.category, unit: newAccompaniment.unit, qty: "", price: "" });
   }
 
+  function exportExcel() {
+    const decimal = (value: number) => value.toFixed(2).replace(".", ",");
+    const rows: Array<Array<string | number>> = [
+      ["BRASA CERTA — PLANO DE CHURRASCO"],
+      ["Convidados", result.guests],
+      ["Período", periods[period].label],
+      ["Margem de segurança", reserve ? "10%" : "Sem margem"],
+      [],
+      ["PROTEÍNAS"],
+      ["Item", "Categoria", "Quantidade (kg)", "Valor por kg", "Subtotal"],
+      ...result.rows.map((item) => [item.name, meatCategory(item.id), decimal(item.kg), decimal(item.price), decimal(item.cost)]),
+      [],
+      ["ACOMPANHAMENTOS"],
+      ["Item", "Categoria", "Quantidade", "Unidade", "Valor unitário", "Subtotal"],
+      ...result.extras.map((item) => [item.name, item.category, decimal(item.qty), item.unit, decimal(item.price), decimal(item.cost)]),
+      [],
+      ["RESUMO"],
+      ["Total de proteínas", decimal(result.cost)],
+      ["Total de acompanhamentos", decimal(result.extrasCost)],
+      ["Total estimado", decimal(result.grandTotal)],
+      ["Valor estimado por pessoa", decimal(result.perPerson)],
+    ];
+    const csv = "\uFEFFsep=;\r\n" + rows.map((row) =>
+      row.map((cell) => `"${String(cell ?? "").replaceAll('"', '""')}"`).join(";")
+    ).join("\r\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "brasa-certa-plano.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <main>
       <header className="topbar">
@@ -417,11 +450,39 @@ export default function Home() {
               <strong>{money.format(result.perPerson)}</strong>
               <small>Rateio entre {result.guests || 0} convidados</small>
             </div>
+            <div className="export-actions">
+              <button onClick={() => window.print()}><span>▣</span> Salvar em PDF</button>
+              <button onClick={exportExcel}><span>▦</span> Baixar Excel</button>
+            </div>
             <a className="swift-link" href="https://www.swift.com.br/swift-legado" target="_blank" rel="noreferrer">
               Conferir linha Legado <span>↗</span>
             </a>
             <p className="price-note">Preços de referência consultados em 28/07/2026. Podem variar por CEP, estoque e promoções.</p>
           </aside>
+          <section className="print-report">
+            <header>
+              <span>BRASA CERTA</span>
+              <h1>Plano de churrasco</h1>
+              <p>{result.guests} convidados · {periods[period].label} · {reserve ? "com 10% de margem" : "sem margem"}</p>
+            </header>
+            <h2>Proteínas</h2>
+            <table>
+              <thead><tr><th>Item</th><th>Categoria</th><th>Quantidade</th><th>R$/kg</th><th>Subtotal</th></tr></thead>
+              <tbody>{result.rows.map((item) => <tr key={item.id}><td>{item.name}</td><td>{meatCategory(item.id)}</td><td>{number.format(item.kg)} kg</td><td>{money.format(item.price)}</td><td>{money.format(item.cost)}</td></tr>)}</tbody>
+            </table>
+            <h2>Acompanhamentos</h2>
+            <table>
+              <thead><tr><th>Item</th><th>Categoria</th><th>Quantidade</th><th>Valor unitário</th><th>Subtotal</th></tr></thead>
+              <tbody>{result.extras.map((item) => <tr key={item.id}><td>{item.name}</td><td>{item.category}</td><td>{formatQty(item.qty, item.unit)}</td><td>{money.format(item.price)}</td><td>{money.format(item.cost)}</td></tr>)}</tbody>
+            </table>
+            <div className="print-totals">
+              <p><span>Proteínas</span><b>{money.format(result.cost)}</b></p>
+              <p><span>Acompanhamentos</span><b>{money.format(result.extrasCost)}</b></p>
+              <p><span>Total estimado</span><b>{money.format(result.grandTotal)}</b></p>
+              <strong><span>Valor por pessoa</span>{money.format(result.perPerson)}</strong>
+            </div>
+            <footer>Estimativa para planejamento. Preços e quantidades podem ser ajustados na calculadora.</footer>
+          </section>
         </div>
       </section>
 
