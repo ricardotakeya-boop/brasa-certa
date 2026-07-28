@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type Meat = {
   id: string;
@@ -24,7 +24,29 @@ type Accompaniment = {
 };
 
 type ItemEdit = { qty?: number; price?: number };
+type StoredCustomAccompaniment = Omit<Accompaniment, "quantity"> & { baseQty: number };
+type SavedBarbecue = {
+  id: string;
+  name: string;
+  eventDate: string;
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+  adults: number;
+  children: number;
+  period: "almoco" | "jantar" | "inteiro";
+  reserve: boolean;
+  selected: string[];
+  selectedAccompaniments: string[];
+  customMeats: Meat[];
+  customAccompaniments: StoredCustomAccompaniment[];
+  meatEdits: Record<string, ItemEdit>;
+  accompanimentEdits: Record<string, ItemEdit>;
+  summary: { guests: number; grandTotal: number; perPerson: number };
+};
 type MeatCategory = "Bovinos" | "Suínos" | "Frangos";
+
+const STORAGE_KEY = "brasa-certa:churrascos:v1";
 
 const meats: Meat[] = [
   { id: "picanha-legado", name: "Picanha", note: "Legado 1855", price: 89.9, share: 1.15, color: "#8e261c", source: "https://www.swift.com.br/legado" },
@@ -115,8 +137,27 @@ export default function Home() {
   const [newMeat, setNewMeat] = useState({ name: "", category: "Bovinos" as MeatCategory, qty: "", price: "" });
   const [newAccompaniment, setNewAccompaniment] = useState({ name: "", category: "Tradicionais" as Accompaniment["category"], unit: "kg", qty: "", price: "" });
   const [reserve, setReserve] = useState(true);
-  const allMeats = [...meats, ...customMeats];
-  const allAccompaniments = [...accompaniments, ...customAccompaniments];
+  const [eventName, setEventName] = useState("Churrasco em família");
+  const [eventDate, setEventDate] = useState("");
+  const [eventNotes, setEventNotes] = useState("");
+  const [savedBarbecues, setSavedBarbecues] = useState<SavedBarbecue[]>([]);
+  const [activeSavedId, setActiveSavedId] = useState<string | null>(null);
+  const [storageStatus, setStorageStatus] = useState("");
+  const backupInputRef = useRef<HTMLInputElement>(null);
+  const allMeats = useMemo(() => [...meats, ...customMeats], [customMeats]);
+  const allAccompaniments = useMemo(() => [...accompaniments, ...customAccompaniments], [customAccompaniments]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      try {
+        const stored = window.localStorage.getItem(STORAGE_KEY);
+        if (stored) setSavedBarbecues(JSON.parse(stored));
+      } catch {
+        setStorageStatus("Não foi possível ler os churrascos salvos neste aparelho.");
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const result = useMemo(() => {
     const p = periods[period];
@@ -144,7 +185,7 @@ export default function Home() {
     const grandTotal = cost + extrasCost;
     const actualMeatKg = rows.reduce((sum, row) => sum + row.kg, 0);
     return { total: actualMeatKg, suggestedTotal: total, rows, cost, guests, extras, extrasCost, grandTotal, perPerson: guests ? grandTotal / guests : 0 };
-  }, [adults, children, period, reserve, selected, selectedAccompaniments, customMeats, customAccompaniments, meatEdits, accompanimentEdits]);
+  }, [adults, children, period, reserve, selected, selectedAccompaniments, allMeats, allAccompaniments, meatEdits, accompanimentEdits]);
 
   function toggleMeat(id: string) {
     setSelected((current) =>
@@ -197,6 +238,143 @@ export default function Home() {
     setNewAccompaniment({ name: "", category: newAccompaniment.category, unit: newAccompaniment.unit, qty: "", price: "" });
   }
 
+  function persistBarbecues(items: SavedBarbecue[]) {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      setSavedBarbecues(items);
+      return true;
+    } catch {
+      setStorageStatus("O navegador não permitiu gravar. Verifique o espaço disponível e as permissões.");
+      return false;
+    }
+  }
+
+  function createSavedRecord(id: string, createdAt: string): SavedBarbecue {
+    const storedCustomAccompaniments = customAccompaniments.map((item) => {
+      const { quantity, ...plainItem } = item;
+      const baseQty = accompanimentEdits[item.id]?.qty ?? quantity(result.guests, period === "inteiro", result.total);
+      return { ...plainItem, baseQty };
+    });
+    const fallbackName = eventDate
+      ? `Churrasco de ${new Date(`${eventDate}T12:00:00`).toLocaleDateString("pt-BR")}`
+      : "Meu churrasco";
+    return {
+      id,
+      name: eventName.trim() || fallbackName,
+      eventDate,
+      notes: eventNotes.trim(),
+      createdAt,
+      updatedAt: new Date().toISOString(),
+      adults,
+      children,
+      period,
+      reserve,
+      selected: [...selected],
+      selectedAccompaniments: [...selectedAccompaniments],
+      customMeats,
+      customAccompaniments: storedCustomAccompaniments,
+      meatEdits,
+      accompanimentEdits,
+      summary: { guests: result.guests, grandTotal: result.grandTotal, perPerson: result.perPerson },
+    };
+  }
+
+  function saveBarbecue() {
+    const now = new Date().toISOString();
+    const id = activeSavedId ?? `churrasco-${Date.now()}`;
+    const existing = savedBarbecues.find((item) => item.id === id);
+    const record = createSavedRecord(id, existing?.createdAt ?? now);
+    const next = existing
+      ? savedBarbecues.map((item) => item.id === id ? record : item)
+      : [record, ...savedBarbecues];
+    if (persistBarbecues(next)) {
+      setActiveSavedId(id);
+      setEventName(record.name);
+      setStorageStatus(existing ? "Alterações salvas neste aparelho." : "Churrasco salvo neste aparelho.");
+    }
+  }
+
+  function openBarbecue(record: SavedBarbecue) {
+    setEventName(record.name);
+    setEventDate(record.eventDate);
+    setEventNotes(record.notes);
+    setAdults(record.adults);
+    setChildren(record.children);
+    setPeriod(record.period);
+    setReserve(record.reserve);
+    setSelected(record.selected);
+    setSelectedAccompaniments(record.selectedAccompaniments);
+    setCustomMeats(record.customMeats);
+    setCustomAccompaniments(record.customAccompaniments.map(({ baseQty, ...item }) => ({
+      ...item,
+      quantity: () => baseQty,
+    })));
+    setMeatEdits(record.meatEdits);
+    setAccompanimentEdits(record.accompanimentEdits);
+    setActiveSavedId(record.id);
+    setMeatMenuOpen(false);
+    setAccompanimentMenuOpen(false);
+    setStorageStatus(`"${record.name}" aberto para consulta e edição.`);
+    document.getElementById("calculadora")?.scrollIntoView({ behavior: "smooth" });
+  }
+
+  function duplicateBarbecue(record: SavedBarbecue) {
+    const now = new Date().toISOString();
+    const copy: SavedBarbecue = {
+      ...record,
+      id: `churrasco-${Date.now()}`,
+      name: `${record.name} — cópia`,
+      createdAt: now,
+      updatedAt: now,
+    };
+    if (persistBarbecues([copy, ...savedBarbecues])) {
+      setStorageStatus("Uma cópia foi criada. Abra-a para fazer alterações.");
+    }
+  }
+
+  function deleteBarbecue(record: SavedBarbecue) {
+    if (!window.confirm(`Excluir "${record.name}" deste aparelho?`)) return;
+    const next = savedBarbecues.filter((item) => item.id !== record.id);
+    if (persistBarbecues(next)) {
+      if (activeSavedId === record.id) setActiveSavedId(null);
+      setStorageStatus("Churrasco excluído deste aparelho.");
+    }
+  }
+
+  function exportBackup() {
+    const backup = {
+      app: "Brasa Certa",
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      churrascos: savedBarbecues,
+    };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `brasa-certa-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    setStorageStatus("Backup baixado. Guarde o arquivo em um local seguro.");
+  }
+
+  async function importBackup(file?: File) {
+    if (!file) return;
+    try {
+      const data = JSON.parse(await file.text());
+      if (data?.app !== "Brasa Certa" || !Array.isArray(data.churrascos)) throw new Error("invalid");
+      const imported = data.churrascos as SavedBarbecue[];
+      if (imported.some((item) => !item.id || !item.name || !item.summary)) throw new Error("invalid");
+      const merged = new Map(savedBarbecues.map((item) => [item.id, item]));
+      imported.forEach((item) => merged.set(item.id, item));
+      const next = [...merged.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+      if (persistBarbecues(next)) setStorageStatus(`${imported.length} churrasco(s) importado(s) com sucesso.`);
+    } catch {
+      setStorageStatus("Esse arquivo não é um backup válido do Brasa Certa.");
+    } finally {
+      if (backupInputRef.current) backupInputRef.current.value = "";
+    }
+  }
+
   function exportExcel() {
     const decimal = (value: number) => value.toFixed(2).replace(".", ",");
     const rows: Array<Array<string | number>> = [
@@ -239,6 +417,7 @@ export default function Home() {
         </a>
         <nav aria-label="Navegação principal">
           <a href="#calculadora">Calculadora</a>
+          <a href="#meus-churrascos">Meus churrascos</a>
           <a href="#dicas">Dicas</a>
         </nav>
         <a className="outline-button" href="#calculadora">Calcular agora <span>↓</span></a>
@@ -267,6 +446,25 @@ export default function Home() {
 
         <div className="calculator-grid">
           <div className="form-panel">
+            <div className="event-details">
+              <div>
+                <span className="step-label">IDENTIFICAÇÃO</span>
+                <h3>Dê um nome ao seu churrasco</h3>
+                <p>Essas informações ajudam a encontrar o planejamento depois.</p>
+              </div>
+              <label>
+                <span>Nome do churrasco</span>
+                <input value={eventName} onChange={(e) => setEventName(e.target.value)} placeholder="Ex.: Dia dos Pais" maxLength={80} />
+              </label>
+              <label>
+                <span>Data do evento</span>
+                <input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} />
+              </label>
+              <label className="event-notes">
+                <span>Observações</span>
+                <input value={eventNotes} onChange={(e) => setEventNotes(e.target.value)} placeholder="Ex.: levar caixa térmica" maxLength={160} />
+              </label>
+            </div>
             <fieldset>
               <legend><span>1</span> Quantas pessoas?</legend>
               <div className="people-grid">
@@ -450,6 +648,10 @@ export default function Home() {
               <strong>{money.format(result.perPerson)}</strong>
               <small>Rateio entre {result.guests || 0} convidados</small>
             </div>
+            <button className="save-plan-button" onClick={saveBarbecue}>
+              <span>＋</span> {activeSavedId ? "Salvar alterações" : "Salvar churrasco"}
+            </button>
+            {storageStatus && <p className="storage-status" role="status">{storageStatus}</p>}
             <div className="export-actions">
               <button onClick={() => window.print()}><span>▣</span> Salvar em PDF</button>
               <button onClick={exportExcel}><span>▦</span> Baixar Excel</button>
@@ -486,9 +688,64 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="saved-section" id="meus-churrascos">
+        <div className="saved-shell">
+          <div className="saved-header">
+            <div>
+              <span className="step-label">02 — SEU HISTÓRICO</span>
+              <h2>Meus churrascos</h2>
+              <p>Salvos somente neste aparelho. Use o backup para levar seus planejamentos para outro celular ou computador.</p>
+            </div>
+            <div className="backup-actions">
+              <button onClick={exportBackup} disabled={!savedBarbecues.length}>Baixar backup</button>
+              <button onClick={() => backupInputRef.current?.click()}>Importar backup</button>
+              <input
+                ref={backupInputRef}
+                type="file"
+                accept="application/json,.json"
+                hidden
+                onChange={(e) => importBackup(e.target.files?.[0])}
+              />
+            </div>
+          </div>
+
+          {savedBarbecues.length ? (
+            <div className="saved-grid">
+              {savedBarbecues.map((record) => (
+                <article className={`saved-card ${activeSavedId === record.id ? "active" : ""}`} key={record.id}>
+                  <div className="saved-card-top">
+                    <span>{record.eventDate ? new Date(`${record.eventDate}T12:00:00`).toLocaleDateString("pt-BR") : "Data a definir"}</span>
+                    {activeSavedId === record.id && <b>ABERTO</b>}
+                  </div>
+                  <h3>{record.name}</h3>
+                  <p>{record.summary.guests} convidados · {periods[record.period].label}</p>
+                  {record.notes && <small>{record.notes}</small>}
+                  <div className="saved-summary">
+                    <span><small>Total estimado</small><strong>{money.format(record.summary.grandTotal)}</strong></span>
+                    <span><small>Por pessoa</small><strong>{money.format(record.summary.perPerson)}</strong></span>
+                  </div>
+                  <div className="saved-actions">
+                    <button className="primary" onClick={() => openBarbecue(record)}>Abrir</button>
+                    <button onClick={() => duplicateBarbecue(record)}>Duplicar</button>
+                    <button className="danger" onClick={() => deleteBarbecue(record)}>Excluir</button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="saved-empty">
+              <span>BC</span>
+              <h3>Nenhum churrasco salvo ainda</h3>
+              <p>Monte o planejamento acima e toque em “Salvar churrasco”.</p>
+              <a href="#calculadora">Voltar à calculadora</a>
+            </div>
+          )}
+        </div>
+      </section>
+
       <section className="extras" id="dicas">
         <div>
-          <span className="step-label light">02 — ACOMPANHAMENTOS</span>
+          <span className="step-label light">03 — ACOMPANHAMENTOS</span>
           <h2>Complete a mesa,<br /><em>na medida.</em></h2>
         </div>
         {result.extras.length ? (
