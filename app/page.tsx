@@ -38,6 +38,7 @@ type SavedBarbecue = {
   children: number;
   period: "almoco" | "jantar" | "inteiro";
   reserve: boolean;
+  chargeChildren?: boolean;
   selected: string[];
   selectedAccompaniments: string[];
   customMeats: Meat[];
@@ -45,7 +46,7 @@ type SavedBarbecue = {
   meatEdits: Record<string, ItemEdit>;
   accompanimentEdits: Record<string, ItemEdit>;
   accompanimentContributions?: Record<string, AccompanimentContribution>;
-  summary: { guests: number; grandTotal: number; perPerson: number };
+  summary: { guests: number; grandTotal: number; perPerson: number; perAdult?: number; perChild?: number };
 };
 type MeatCategory = "Bovinos" | "Suínos" | "Frangos";
 
@@ -141,6 +142,7 @@ export default function Home() {
   const [newMeat, setNewMeat] = useState({ name: "", category: "Bovinos" as MeatCategory, qty: "", price: "" });
   const [newAccompaniment, setNewAccompaniment] = useState({ name: "", category: "Tradicionais" as Accompaniment["category"], unit: "kg", qty: "", price: "" });
   const [reserve, setReserve] = useState(true);
+  const [chargeChildren, setChargeChildren] = useState(true);
   const [eventName, setEventName] = useState("Churrasco em família");
   const [eventDate, setEventDate] = useState("");
   const [eventNotes, setEventNotes] = useState("");
@@ -200,8 +202,24 @@ export default function Home() {
     const extrasCost = extras.reduce((sum, item) => sum + item.cost, 0);
     const grandTotal = cost + extrasCost;
     const actualMeatKg = rows.reduce((sum, row) => sum + row.kg, 0);
-    return { total: actualMeatKg, suggestedTotal: total, rows, cost, guests, extras, extrasCost, grandTotal, perPerson: guests ? grandTotal / guests : 0 };
-  }, [adults, children, period, reserve, selected, selectedAccompaniments, allMeats, allAccompaniments, meatEdits, accompanimentEdits, accompanimentContributions]);
+    const rateUnits = adults + (chargeChildren ? children * .5 : 0);
+    const perAdult = rateUnits ? grandTotal / rateUnits : 0;
+    const perChild = chargeChildren ? perAdult * .5 : 0;
+    return {
+      total: actualMeatKg,
+      suggestedTotal: total,
+      rows,
+      cost,
+      guests,
+      extras,
+      extrasCost,
+      grandTotal,
+      rateUnits,
+      perAdult,
+      perChild,
+      perPerson: perAdult,
+    };
+  }, [adults, children, period, reserve, chargeChildren, selected, selectedAccompaniments, allMeats, allAccompaniments, meatEdits, accompanimentEdits, accompanimentContributions]);
 
   function toggleMeat(id: string) {
     setSelected((current) =>
@@ -292,6 +310,7 @@ export default function Home() {
       children,
       period,
       reserve,
+      chargeChildren,
       selected: [...selected],
       selectedAccompaniments: [...selectedAccompaniments],
       customMeats,
@@ -299,7 +318,13 @@ export default function Home() {
       meatEdits,
       accompanimentEdits,
       accompanimentContributions,
-      summary: { guests: result.guests, grandTotal: result.grandTotal, perPerson: result.perPerson },
+      summary: {
+        guests: result.guests,
+        grandTotal: result.grandTotal,
+        perPerson: result.perAdult,
+        perAdult: result.perAdult,
+        perChild: result.perChild,
+      },
     };
   }
 
@@ -334,6 +359,7 @@ export default function Home() {
     setNewMeat({ name: "", category: "Bovinos", qty: "", price: "" });
     setNewAccompaniment({ name: "", category: "Tradicionais", unit: "kg", qty: "", price: "" });
     setReserve(true);
+    setChargeChildren(true);
     setEventName("");
     setEventDate("");
     setEventNotes("");
@@ -358,6 +384,7 @@ export default function Home() {
     setChildren(record.children);
     setPeriod(record.period);
     setReserve(record.reserve);
+    setChargeChildren(record.chargeChildren ?? true);
     setSelected(record.selected);
     setSelectedAccompaniments(record.selectedAccompaniments);
     setCustomMeats(record.customMeats);
@@ -474,6 +501,7 @@ export default function Home() {
       [{ value: "Convidados", fontWeight: "bold" }, result.guests, null, null, null, null, null, null],
       [{ value: "Período", fontWeight: "bold" }, periods[period].label, null, null, null, null, null, null],
       [{ value: "Margem de segurança", fontWeight: "bold" }, reserve ? "10%" : "Sem margem", null, null, null, null, null, null],
+      [{ value: "Rateio infantil", fontWeight: "bold" }, chargeChildren ? "Meia cota por criança" : "Crianças não cobradas", null, null, null, null, null, null],
       [],
       [section("PROTEÍNAS"), null, null, null, null, null, null, null],
       [header("Item"), header("Categoria"), header("Quantidade"), header("Unidade"), header("Valor por kg"), header("Responsável"), header("Forma"), header("Subtotal")],
@@ -505,7 +533,8 @@ export default function Home() {
       summary("Total de proteínas", result.cost),
       summary("Total de acompanhamentos", result.extrasCost),
       summary("Total estimado", result.grandTotal),
-      summary("Valor estimado por pessoa", result.perPerson),
+      summary("Valor estimado por adulto", result.perAdult),
+      summary("Valor estimado por criança", result.perChild),
     ];
 
     try {
@@ -777,6 +806,13 @@ export default function Home() {
               <input type="checkbox" checked={reserve} onChange={(e) => setReserve(e.target.checked)} />
               <span><b>Adicionar 10% de margem de segurança</b><small>Boa ideia para turmas que comem bem.</small></span>
             </label>
+            <label className="reserve-row child-charge-row">
+              <input type="checkbox" checked={chargeChildren} onChange={(e) => setChargeChildren(e.target.checked)} />
+              <span>
+                <b>Cobrar crianças no rateio</b>
+                <small>{chargeChildren ? "Cada criança paga meia cota de adulto." : "Crianças não pagam; o total fica somente com os adultos."}</small>
+              </span>
+            </label>
           </div>
 
           <aside className="result-card" aria-live="polite">
@@ -821,9 +857,17 @@ export default function Home() {
               <div><span>Total estimado</span><strong>{money.format(result.grandTotal)}</strong></div>
             </div>
             <div className="per-person-total">
-              <span>VALOR ESTIMADO POR PESSOA</span>
-              <strong>{money.format(result.perPerson)}</strong>
-              <small>Rateio entre {result.guests || 0} convidados</small>
+              <span>RATEIO ESTIMADO</span>
+              <div className="rate-values">
+                <div><small>POR ADULTO</small><strong>{money.format(result.perAdult)}</strong></div>
+                <div><small>POR CRIANÇA</small><strong>{money.format(result.perChild)}</strong></div>
+              </div>
+              <small>
+                {chargeChildren
+                  ? `${adults} cota(s) adulta(s) + ${children} meia(s) cota(s) infantil(is)`
+                  : `Crianças não cobradas · rateio entre ${adults} adulto(s)`}
+              </small>
+              {!result.rateUnits && result.grandTotal > 0 && <small className="rate-warning">Inclua ao menos um adulto para calcular o rateio.</small>}
             </div>
             <button className="save-plan-button" onClick={saveBarbecue}>
               <span>＋</span> {activeSavedId ? "Salvar alterações" : "Salvar churrasco"}
@@ -842,7 +886,10 @@ export default function Home() {
             <header>
               <span>BRASA CERTA</span>
               <h1>Plano de churrasco</h1>
-              <p>{result.guests} convidados · {periods[period].label} · {reserve ? "com 10% de margem" : "sem margem"}</p>
+              <p>
+                {result.guests} convidados · {periods[period].label} · {reserve ? "com 10% de margem" : "sem margem"} ·
+                {chargeChildren ? " crianças com meia cota" : " crianças não cobradas"}
+              </p>
             </header>
             <h2>Proteínas</h2>
             <table>
@@ -868,7 +915,8 @@ export default function Home() {
               <p><span>Proteínas</span><b>{money.format(result.cost)}</b></p>
               <p><span>Acompanhamentos</span><b>{money.format(result.extrasCost)}</b></p>
               <p><span>Total estimado</span><b>{money.format(result.grandTotal)}</b></p>
-              <strong><span>Valor por pessoa</span>{money.format(result.perPerson)}</strong>
+              <strong><span>Valor por adulto</span>{money.format(result.perAdult)}</strong>
+              <strong><span>Valor por criança</span>{money.format(result.perChild)}</strong>
             </div>
             <footer>Estimativa para planejamento. Preços e quantidades podem ser ajustados na calculadora.</footer>
           </section>
@@ -909,7 +957,11 @@ export default function Home() {
                   {record.notes && <small>{record.notes}</small>}
                   <div className="saved-summary">
                     <span><small>Total estimado</small><strong>{money.format(record.summary.grandTotal)}</strong></span>
-                    <span><small>Por pessoa</small><strong>{money.format(record.summary.perPerson)}</strong></span>
+                    <span><small>Por adulto</small><strong>{money.format(record.summary.perAdult ?? record.summary.perPerson)}</strong></span>
+                    <span>
+                      <small>Por criança</small>
+                      <strong>{money.format(record.summary.perChild ?? ((record.chargeChildren ?? true) ? record.summary.perPerson / 2 : 0))}</strong>
+                    </span>
                   </div>
                   <div className="saved-actions">
                     <button className="primary" onClick={() => openBarbecue(record)}>Abrir</button>

@@ -137,6 +137,7 @@ legend span { display:inline-grid; place-items:center; width:29px; height:29px; 
 .reserve-row input { accent-color:var(--red); width:18px; height:18px; }
 .reserve-row b,.reserve-row small { display:block; }
 .reserve-row small { font-size:11px; color:#777; margin-top:4px; }
+.child-charge-row { border-top:1px solid var(--line); background:#fbf8f1; }
 .result-card { position:sticky; top:20px; background:var(--ink); color:white; box-shadow:0 16px 45px rgba(22,32,28,.18); }
 .result-head { padding:26px 28px 22px; border-bottom:1px solid #3b443f; }
 .result-head span { color:#e9a271; font-size:10px; font-weight:900; letter-spacing:1.8px; }
@@ -174,6 +175,11 @@ legend span { display:inline-grid; place-items:center; width:29px; height:29px; 
 .per-person-total span { color:#e9a271; font-size:9px; font-weight:900; letter-spacing:1.3px; }
 .per-person-total strong { display:block; margin:7px 0 4px; color:white; font:400 33px Georgia; }
 .per-person-total small { color:#909992; font-size:8px; }
+.rate-values { display:grid; grid-template-columns:1fr 1fr; gap:1px; margin:12px 0 10px; background:#4a514d; }
+.rate-values>div { padding:12px 7px; background:#202a25; }
+.rate-values small { color:#e9a271; font-size:7px; font-weight:900; letter-spacing:.8px; }
+.rate-values strong { margin:5px 0 0; font-size:23px; }
+.per-person-total .rate-warning { margin-top:7px; color:#ffc18c; font-weight:700; }
 .save-plan-button { display:block; width:calc(100% - 40px); margin:0 20px 9px; border:0; background:var(--orange); color:#211b16; padding:14px 10px; cursor:pointer; font-size:10px; font-weight:900; letter-spacing:.7px; text-transform:uppercase; }
 .save-plan-button:hover { background:#ffc18c; }
 .save-plan-button span { margin-right:5px; }
@@ -204,6 +210,7 @@ legend span { display:inline-grid; place-items:center; width:29px; height:29px; 
 .saved-card>small { display:block; margin-top:12px; color:#89857e; font-size:9px; line-height:1.45; }
 .saved-summary { display:grid; grid-template-columns:1fr 1fr; gap:1px; margin-top:auto; padding-top:20px; }
 .saved-summary>span { padding:11px; background:#f4f0e7; }
+.saved-summary>span:first-child { grid-column:1 / -1; }
 .saved-summary small,.saved-summary strong { display:block; }
 .saved-summary small { color:#817c74; font-size:8px; text-transform:uppercase; }
 .saved-summary strong { margin-top:5px; font:400 18px Georgia; }
