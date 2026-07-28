@@ -164,9 +164,12 @@ export default function Home() {
     const base = adults * p.adult + children * p.child;
     const total = base * (reserve ? 1.1 : 1);
     const chosen = allMeats.filter((m) => selected.includes(m.id));
-    const shares = chosen.reduce((sum, m) => sum + m.share, 0);
+    const automaticShares = chosen
+      .filter((m) => !m.id.startsWith("custom-"))
+      .reduce((sum, m) => sum + m.share, 0);
     const rows = chosen.map((m) => {
-      const suggestedKg = shares ? total * (m.share / shares) : 0;
+      const isCustom = m.id.startsWith("custom-");
+      const suggestedKg = !isCustom && automaticShares ? total * (m.share / automaticShares) : 0;
       const kg = meatEdits[m.id]?.qty ?? suggestedKg;
       const price = meatEdits[m.id]?.price ?? m.price;
       return { ...m, kg, price, cost: kg * price };
@@ -539,6 +542,7 @@ export default function Home() {
               </div>
               <div className="custom-item">
                 <h3>Adicionar outra proteína ou marca</h3>
+                <p className="custom-item-note">A quantidade informada será somada ao total, sem reduzir as outras carnes.</p>
                 <div className="custom-item-grid protein">
                   <label><span>Nome da carne</span><input value={newMeat.name} onChange={(e) => setNewMeat({ ...newMeat, name: e.target.value })} placeholder="Ex.: Costela de outra marca" /></label>
                   <label><span>Categoria</span><select value={newMeat.category} onChange={(e) => setNewMeat({ ...newMeat, category: e.target.value as MeatCategory })}><option>Bovinos</option><option>Suínos</option><option>Frangos</option></select></label>
