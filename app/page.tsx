@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { Cell, SheetData } from "write-excel-file/universal";
 
 type Meat = {
   id: string;
@@ -378,37 +379,95 @@ export default function Home() {
     }
   }
 
-  function exportExcel() {
-    const decimal = (value: number) => value.toFixed(2).replace(".", ",");
-    const rows: Array<Array<string | number>> = [
-      ["BRASA CERTA — PLANO DE CHURRASCO"],
-      ["Convidados", result.guests],
-      ["Período", periods[period].label],
-      ["Margem de segurança", reserve ? "10%" : "Sem margem"],
-      [],
-      ["PROTEÍNAS"],
-      ["Item", "Categoria", "Quantidade (kg)", "Valor por kg", "Subtotal"],
-      ...result.rows.map((item) => [item.name, meatCategory(item.id), decimal(item.kg), decimal(item.price), decimal(item.cost)]),
-      [],
-      ["ACOMPANHAMENTOS"],
-      ["Item", "Categoria", "Quantidade", "Unidade", "Valor unitário", "Subtotal"],
-      ...result.extras.map((item) => [item.name, item.category, decimal(item.qty), item.unit, decimal(item.price), decimal(item.cost)]),
-      [],
-      ["RESUMO"],
-      ["Total de proteínas", decimal(result.cost)],
-      ["Total de acompanhamentos", decimal(result.extrasCost)],
-      ["Total estimado", decimal(result.grandTotal)],
-      ["Valor estimado por pessoa", decimal(result.perPerson)],
+  async function exportExcel() {
+    const title = (value: string): Cell => ({
+      value,
+      columnSpan: 6,
+      fontWeight: "bold",
+      fontSize: 16,
+      textColor: "#FFFFFF",
+      backgroundColor: "#B53B28",
+      height: 30,
+      align: "center",
+      alignVertical: "center",
+    });
+    const section = (value: string): Cell => ({
+      value,
+      columnSpan: 6,
+      fontWeight: "bold",
+      textColor: "#FFFFFF",
+      backgroundColor: "#17201C",
+      height: 22,
+      alignVertical: "center",
+    });
+    const header = (value: string): Cell => ({
+      value,
+      fontWeight: "bold",
+      backgroundColor: "#F1EDE5",
+      borderColor: "#D3C9BC",
+    });
+    const quantity = (value: number): Cell => ({ value, type: Number, format: "0.00", align: "right" });
+    const currency = (value: number): Cell => ({ value, type: Number, format: '"R$" #,##0.00', align: "right" });
+    const summary = (label: string, value: number): Cell[] => [
+      { value: label, columnSpan: 5, fontWeight: "bold", backgroundColor: "#F4F0E7" },
+      null, null, null, null,
+      { ...currency(value) as object, fontWeight: "bold", backgroundColor: "#F4F0E7" } as Cell,
     ];
-    const csv = "\uFEFFsep=;\r\n" + rows.map((row) =>
-      row.map((cell) => `"${String(cell ?? "").replaceAll('"', '""')}"`).join(";")
-    ).join("\r\n");
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "brasa-certa-plano.csv";
-    link.click();
-    URL.revokeObjectURL(url);
+
+    const rows: SheetData = [
+      [title("BRASA CERTA — PLANO DE CHURRASCO"), null, null, null, null, null],
+      [{ value: "Nome", fontWeight: "bold" }, eventName.trim() || "Meu churrasco", null, null, null, null],
+      [{ value: "Data", fontWeight: "bold" }, eventDate ? new Date(`${eventDate}T12:00:00`).toLocaleDateString("pt-BR") : "A definir", null, null, null, null],
+      [{ value: "Convidados", fontWeight: "bold" }, result.guests, null, null, null, null],
+      [{ value: "Período", fontWeight: "bold" }, periods[period].label, null, null, null, null],
+      [{ value: "Margem de segurança", fontWeight: "bold" }, reserve ? "10%" : "Sem margem", null, null, null, null],
+      [],
+      [section("PROTEÍNAS"), null, null, null, null, null],
+      [header("Item"), header("Categoria"), header("Quantidade"), header("Unidade"), header("Valor por kg"), header("Subtotal")],
+      ...result.rows.map((item): Cell[] => [
+        item.name,
+        meatCategory(item.id),
+        quantity(item.kg),
+        "kg",
+        currency(item.price),
+        currency(item.cost),
+      ]),
+      [],
+      [section("ACOMPANHAMENTOS"), null, null, null, null, null],
+      [header("Item"), header("Categoria"), header("Quantidade"), header("Unidade"), header("Valor unitário"), header("Subtotal")],
+      ...result.extras.map((item): Cell[] => [
+        item.name,
+        item.category,
+        quantity(item.qty),
+        item.unit,
+        currency(item.price),
+        currency(item.cost),
+      ]),
+      [],
+      [section("RESUMO"), null, null, null, null, null],
+      summary("Total de proteínas", result.cost),
+      summary("Total de acompanhamentos", result.extrasCost),
+      summary("Total estimado", result.grandTotal),
+      summary("Valor estimado por pessoa", result.perPerson),
+    ];
+
+    try {
+      const { default: writeExcelFile } = await import("write-excel-file/universal");
+      const blob = await writeExcelFile(rows, {
+        sheet: "Plano do churrasco",
+        columns: [{ width: 28 }, { width: 22 }, { width: 14 }, { width: 12 }, { width: 17 }, { width: 17 }],
+      }).toBlob();
+      const safeName = (eventName.trim() || "plano").replace(/[<>:"/\\|?*]+/g, "-").slice(0, 60);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `brasa-certa-${safeName}.xlsx`;
+      link.click();
+      URL.revokeObjectURL(url);
+      setStorageStatus("Planilha Excel baixada com acentos e valores formatados.");
+    } catch {
+      setStorageStatus("Não foi possível gerar a planilha Excel. Tente novamente.");
+    }
   }
 
   return (
