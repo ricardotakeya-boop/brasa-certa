@@ -147,6 +147,7 @@ export default function Home() {
   const [savedBarbecues, setSavedBarbecues] = useState<SavedBarbecue[]>([]);
   const [activeSavedId, setActiveSavedId] = useState<string | null>(null);
   const [storageStatus, setStorageStatus] = useState("");
+  const [newPlanPromptOpen, setNewPlanPromptOpen] = useState(false);
   const backupInputRef = useRef<HTMLInputElement>(null);
   const allMeats = useMemo(() => [...meats, ...customMeats], [customMeats]);
   const allAccompaniments = useMemo(() => [...accompaniments, ...customAccompaniments], [customAccompaniments]);
@@ -314,7 +315,39 @@ export default function Home() {
       setActiveSavedId(id);
       setEventName(record.name);
       setStorageStatus(existing ? "Alterações salvas neste aparelho." : "Churrasco salvo neste aparelho.");
+      return true;
     }
+    return false;
+  }
+
+  function resetPlan() {
+    setAdults(0);
+    setChildren(0);
+    setPeriod("almoco");
+    setSelected([]);
+    setSelectedAccompaniments([]);
+    setCustomMeats([]);
+    setCustomAccompaniments([]);
+    setMeatEdits({});
+    setAccompanimentEdits({});
+    setAccompanimentContributions({});
+    setNewMeat({ name: "", category: "Bovinos", qty: "", price: "" });
+    setNewAccompaniment({ name: "", category: "Tradicionais", unit: "kg", qty: "", price: "" });
+    setReserve(true);
+    setEventName("");
+    setEventDate("");
+    setEventNotes("");
+    setActiveSavedId(null);
+    setMeatMenuOpen(false);
+    setAccompanimentMenuOpen(false);
+    setMeatSearch("");
+    setNewPlanPromptOpen(false);
+    setStorageStatus("Novo planejamento iniciado.");
+    document.getElementById("calculadora")?.scrollIntoView({ behavior: "smooth" });
+  }
+
+  function saveAndResetPlan() {
+    if (saveBarbecue()) resetPlan();
   }
 
   function openBarbecue(record: SavedBarbecue) {
@@ -512,6 +545,24 @@ export default function Home() {
         <a className="outline-button" href="#calculadora">Calcular agora <span>↓</span></a>
       </header>
 
+      {newPlanPromptOpen && (
+        <div className="dialog-backdrop">
+          <section className="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="new-plan-title">
+            <span className="step-label">NOVO PLANEJAMENTO</span>
+            <h2 id="new-plan-title">Salvar antes de começar outro?</h2>
+            <p>
+              Você está fechando {eventName.trim() ? <strong>“{eventName.trim()}”</strong> : "o planejamento atual"}.
+              Escolha se deseja guardá-lo em “Meus churrascos”.
+            </p>
+            <div className="dialog-actions">
+              <button className="dialog-primary" autoFocus onClick={saveAndResetPlan}>Salvar e começar novo</button>
+              <button onClick={resetPlan}>Começar sem salvar</button>
+              <button className="dialog-cancel" onClick={() => setNewPlanPromptOpen(false)}>Cancelar</button>
+            </div>
+          </section>
+        </div>
+      )}
+
       <section className="hero" id="inicio">
         <div className="eyebrow"><span>•</span> Planeje sem desperdício</div>
         <h1>Churrasco bom<br />começa na <em>conta.</em></h1>
@@ -537,9 +588,14 @@ export default function Home() {
           <div className="form-panel">
             <div className="event-details">
               <div>
-                <span className="step-label">IDENTIFICAÇÃO</span>
-                <h3>Dê um nome ao seu churrasco</h3>
-                <p>Essas informações ajudam a encontrar o planejamento depois.</p>
+                <div className="event-details-copy">
+                  <span className="step-label">IDENTIFICAÇÃO</span>
+                  <h3>Dê um nome ao seu churrasco</h3>
+                  <p>Essas informações ajudam a encontrar o planejamento depois.</p>
+                </div>
+                <button className="new-plan-button" onClick={() => setNewPlanPromptOpen(true)}>
+                  ＋ Novo churrasco
+                </button>
               </div>
               <label>
                 <span>Nome do churrasco</span>
@@ -677,14 +733,18 @@ export default function Home() {
                     <label><small>Qtd. ({item.unit})</small><input type="number" min="0" step=".1" value={Number(item.qty.toFixed(2))} onChange={(e) => updateAccompaniment(item.id, "qty", Number(e.target.value))} /></label>
                     <label><small>R$ por {item.unit}</small><input type="number" min="0" step=".01" value={item.price} onChange={(e) => updateAccompaniment(item.id, "price", Number(e.target.value))} /></label>
                     <button className="remove-item" onClick={() => toggleAccompaniment(item.id)} aria-label={`Remover ${item.name}`}>×</button>
-                    <div className="contribution-controls">
+                    <div className="contribution-controls" aria-label={`Responsável pelo acompanhamento ${item.name}`}>
+                      <div className="contribution-item-reference">
+                        <span>RESPONSÁVEL PELO ACOMPANHAMENTO</span>
+                        <b>{item.icon} {item.name}</b>
+                      </div>
                       <label className="contribution-toggle">
                         <input
                           type="checkbox"
                           checked={item.provided}
                           onChange={(e) => updateContribution(item.id, { provided: e.target.checked })}
                         />
-                        <span><b>Uma família traz este item</b><small>Manter a quantidade, mas não cobrar no rateio.</small></span>
+                        <span><b>Uma família traz {item.name}</b><small>Manter a quantidade, mas não cobrar no rateio.</small></span>
                       </label>
                       <label className="responsible-input">
                         <span>Família ou responsável</span>
