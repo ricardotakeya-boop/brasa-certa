@@ -12,6 +12,17 @@ type Meat = {
   source: string;
 };
 
+type Accompaniment = {
+  id: string;
+  name: string;
+  category: "Tradicionais" | "Saladas e legumes" | "Bebidas" | "Apoio";
+  icon: string;
+  note: string;
+  unit: string;
+  price: number;
+  quantity: (guests: number, allDay: boolean, meatKg: number) => number;
+};
+
 const meats: Meat[] = [
   { id: "picanha-legado", name: "Picanha", note: "Legado 1855", price: 89.9, share: 1.15, color: "#8e261c", source: "https://www.swift.com.br/legado" },
   { id: "medalhao-legado", name: "Medalhão de picanha", note: "Legado 1855", price: 59.9, share: 1.08, color: "#ad3827", source: "https://www.swift.com.br/swift-legado" },
@@ -33,10 +44,39 @@ const meats: Meat[] = [
   { id: "costela-bafo-gran", name: "Costela bafo", note: "Gran Reserva", price: 36.9, share: 1.25, color: "#6f3529", source: "https://loja.swift.com.br/cortes-especiais/gran%20reserva" },
   { id: "costelinha-suina", name: "Costelinha suína", note: "Swift Premium", price: 38.9, share: 1.15, color: "#bd6656", source: "https://www.swift.com.br/detail/costelinha-suina-premium-swift-kg" },
   { id: "picanha-suina", name: "Picanha suína", note: "Swift Grill", price: 29.9, share: .95, color: "#ce7968", source: "https://www.swift.com.br/detail/picanha-suina-grill-swift-kg" },
+  { id: "ancho-suino", name: "Ancho suíno", note: "Swift Grill chimichurri", price: 29.9, share: .95, color: "#ba624d", source: "https://loja.swift.com.br/churrasco/swift/su%C3%ADnos" },
+  { id: "lombo-suino", name: "Lombo suíno", note: "Swift Linha Mais", price: 24.9, share: .9, color: "#d07b64", source: "https://www.swift.com.br/detail/lombo-suino-swift-mais-kg" },
+  { id: "costela-alecrim", name: "Costela suína com alecrim", note: "Swift Grill", price: 35.9, share: 1.12, color: "#a85243", source: "https://loja.swift.com.br/churrasco/swift/su%C3%ADnos" },
+  { id: "espetinho-suino", name: "Espetinho suíno", note: "Swift 900 g", price: 31, share: .88, color: "#c8745e", source: "https://loja.swift.com.br/churrasco/swift/su%C3%ADnos" },
   { id: "linguica", name: "Linguiça toscana", note: "Swift 700 g", price: 27, share: .88, color: "#d79550", source: "https://www.swift.com.br/churrasco-swift" },
   { id: "coracao", name: "Coração de frango", note: "Swift 1 kg", price: 32.9, share: .76, color: "#6c3029", source: "https://www.swift.com.br/coracao%20de%20frango%20pre%C3%A7o" },
   { id: "panceta", name: "Panceta em espetinho", note: "Swift 500 g", price: 39.8, share: .82, color: "#d8896d", source: "https://www.swift.com.br/costelinha%20su%C3%ADna" },
-  { id: "frango", name: "Coxa e sobrecoxa", note: "Swift temperada", price: 22.9, share: .9, color: "#d8a05f", source: "https://www.swift.com.br/churrasco-swift" },
+  { id: "file-coxa", name: "Filé de coxa e sobrecoxa", note: "Swift temperado 1 kg", price: 22.9, share: .9, color: "#d8a05f", source: "https://www.swift.com.br/asa" },
+  { id: "tulipa", name: "Meio da asa (tulipa)", note: "Swift 1 kg", price: 24.9, share: .86, color: "#c98b4e", source: "https://www.swift.com.br/asa" },
+  { id: "coxinha-asa", name: "Coxinha da asa", note: "Swift temperada 1 kg", price: 16.9, share: .88, color: "#e0a969", source: "https://www.swift.com.br/asa" },
+  { id: "asa-frango", name: "Asa de frango", note: "Swift 1 kg", price: 16.5, share: .88, color: "#b9834c", source: "https://www.swift.com.br/asa" },
+];
+
+const meatGroups = [
+  { label: "Bovinos", icon: "●", test: (id: string) => !["costelinha-suina", "picanha-suina", "ancho-suino", "lombo-suino", "costela-alecrim", "espetinho-suino", "linguica", "panceta", "coracao", "file-coxa", "tulipa", "coxinha-asa", "asa-frango"].includes(id) },
+  { label: "Suínos", icon: "◆", test: (id: string) => ["costelinha-suina", "picanha-suina", "ancho-suino", "lombo-suino", "costela-alecrim", "espetinho-suino", "linguica", "panceta"].includes(id) },
+  { label: "Frangos", icon: "▲", test: (id: string) => ["coracao", "file-coxa", "tulipa", "coxinha-asa", "asa-frango"].includes(id) },
+];
+
+const accompaniments: Accompaniment[] = [
+  { id: "pao-alho", name: "Pão de alho", category: "Tradicionais", icon: "🥖", note: "1 a 2 por pessoa", unit: "un.", price: 1.98, quantity: (g) => Math.ceil(g * 1.5) },
+  { id: "arroz", name: "Arroz cru", category: "Tradicionais", icon: "🍚", note: "60 g por pessoa", unit: "kg", price: 8.5, quantity: (g) => g * .06 },
+  { id: "farofa", name: "Farofa", category: "Tradicionais", icon: "🥣", note: "40 g por pessoa", unit: "kg", price: 21.9, quantity: (g) => g * .04 },
+  { id: "queijo", name: "Queijo coalho", category: "Tradicionais", icon: "🧀", note: "2 espetos por pessoa", unit: "kg", price: 54.9, quantity: (g) => g * .08 },
+  { id: "vinagrete", name: "Vinagrete", category: "Saladas e legumes", icon: "🍅", note: "80 g por pessoa", unit: "kg", price: 13.9, quantity: (g) => g * .08 },
+  { id: "legumes", name: "Legumes na brasa", category: "Saladas e legumes", icon: "🥕", note: "Abobrinha, cebola e pimentão", unit: "kg", price: 14.9, quantity: (g) => g * .1 },
+  { id: "maionese", name: "Salada de maionese", category: "Saladas e legumes", icon: "🥔", note: "100 g por pessoa", unit: "kg", price: 24.9, quantity: (g) => g * .1 },
+  { id: "salada", name: "Salada verde", category: "Saladas e legumes", icon: "🥬", note: "50 g por pessoa", unit: "kg", price: 19.9, quantity: (g) => g * .05 },
+  { id: "agua-refri", name: "Água e refrigerante", category: "Bebidas", icon: "🥤", note: "1,2 L por pessoa", unit: "L", price: 7.5, quantity: (g, day) => g * (day ? 1.8 : 1.2) },
+  { id: "cerveja", name: "Cerveja", category: "Bebidas", icon: "🍺", note: "Ajuste conforme o perfil da turma", unit: "L", price: 14.5, quantity: (g, day) => g * (day ? 2 : 1.2) },
+  { id: "carvao", name: "Carvão", category: "Apoio", icon: "🔥", note: "Pacotes de 4 kg", unit: "pct.", price: 34.9, quantity: (g) => Math.max(1, Math.ceil(g / 10)) },
+  { id: "gelo", name: "Gelo", category: "Apoio", icon: "🧊", note: "Consumo e conservação", unit: "kg", price: 4.5, quantity: (g) => Math.ceil(g / 5) * 5 },
+  { id: "sal", name: "Sal grosso", category: "Apoio", icon: "🧂", note: "Pacotes de 1 kg", unit: "pct.", price: 7.9, quantity: (_g, _day, kg) => Math.max(1, Math.ceil(kg / 8)) },
 ];
 
 const periods = {
@@ -47,6 +87,7 @@ const periods = {
 
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const number = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1, minimumFractionDigits: 1 });
+const formatQty = (qty: number, unit: string) => `${unit === "un." || unit === "pct." ? Math.ceil(qty) : number.format(qty)} ${unit}`;
 
 export default function Home() {
   const [adults, setAdults] = useState(12);
@@ -55,6 +96,8 @@ export default function Home() {
   const [selected, setSelected] = useState(["picanha-legado", "fraldinha-legado", "linguica", "costelinha-suina"]);
   const [meatMenuOpen, setMeatMenuOpen] = useState(false);
   const [meatSearch, setMeatSearch] = useState("");
+  const [selectedAccompaniments, setSelectedAccompaniments] = useState(["pao-alho", "arroz", "vinagrete", "farofa", "agua-refri", "carvao", "gelo", "sal"]);
+  const [accompanimentMenuOpen, setAccompanimentMenuOpen] = useState(false);
   const [reserve, setReserve] = useState(true);
 
   const result = useMemo(() => {
@@ -69,22 +112,28 @@ export default function Home() {
     });
     const cost = rows.reduce((sum, row) => sum + row.cost, 0);
     const guests = adults + children;
-    const extras = [
-      { name: "Pão de alho", qty: Math.max(1, Math.ceil(guests * 1.5 / 6)), unit: "pct. 300 g", price: 11.9 },
-      { name: "Queijo coalho", qty: Math.max(1, Math.ceil(guests / 8)), unit: "pct.", price: 28.9 },
-      { name: "Carvão", qty: Math.max(1, Math.ceil(guests / 10)), unit: "pct. 4 kg", price: 34.9 },
-      { name: "Panceta", qty: Math.max(1, Math.ceil(guests / 10)), unit: "pct. 500 g", price: 19.9 },
-    ].map((item) => ({ ...item, cost: item.qty * item.price }));
+    const extras = accompaniments
+      .filter((item) => selectedAccompaniments.includes(item.id))
+      .map((item) => {
+        const qty = item.quantity(guests, period === "inteiro", total);
+        return { ...item, qty, cost: qty * item.price };
+      });
     const extrasCost = extras.reduce((sum, item) => sum + item.cost, 0);
     const grandTotal = cost + extrasCost;
     return { total, rows, cost, guests, extras, extrasCost, grandTotal, perPerson: guests ? grandTotal / guests : 0 };
-  }, [adults, children, period, reserve, selected]);
+  }, [adults, children, period, reserve, selected, selectedAccompaniments]);
 
   function toggleMeat(id: string) {
     setSelected((current) =>
       current.includes(id)
         ? current.length === 1 ? current : current.filter((item) => item !== id)
         : [...current, id]
+    );
+  }
+
+  function toggleAccompaniment(id: string) {
+    setSelectedAccompaniments((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
     );
   }
 
@@ -154,14 +203,25 @@ export default function Home() {
                   <div className="combo-menu">
                     <input autoFocus type="search" value={meatSearch} onChange={(e) => setMeatSearch(e.target.value)} placeholder="Buscar carne ou linha..." aria-label="Buscar carne" />
                     <div className="combo-options">
-                      {meats.filter((meat) => `${meat.name} ${meat.note}`.toLowerCase().includes(meatSearch.toLowerCase())).map((meat) => {
-                        const active = selected.includes(meat.id);
+                      {meatGroups.map((group) => {
+                        const options = meats.filter((meat) =>
+                          group.test(meat.id) && `${meat.name} ${meat.note}`.toLowerCase().includes(meatSearch.toLowerCase())
+                        );
+                        if (!options.length) return null;
                         return (
-                          <button key={meat.id} onClick={() => toggleMeat(meat.id)} className={active ? "active" : ""}>
-                            <span className="meat-swatch" style={{ background: meat.color }} aria-hidden="true" />
-                            <span><b>{meat.name}</b><small>{meat.note} · {money.format(meat.price)}/kg</small></span>
-                            <i>{active ? "✓" : "+"}</i>
-                          </button>
+                          <section className="option-group" key={group.label}>
+                            <h3><span>{group.icon}</span>{group.label}<small>{options.length} opções</small></h3>
+                            {options.map((meat) => {
+                              const active = selected.includes(meat.id);
+                              return (
+                                <button key={meat.id} onClick={() => toggleMeat(meat.id)} className={active ? "active" : ""}>
+                                  <span className="meat-swatch" style={{ background: meat.color }} aria-hidden="true" />
+                                  <span><b>{meat.name}</b><small>{meat.note} · {money.format(meat.price)}/kg</small></span>
+                                  <i>{active ? "✓" : "+"}</i>
+                                </button>
+                              );
+                            })}
+                          </section>
                         );
                       })}
                     </div>
@@ -179,6 +239,45 @@ export default function Home() {
                     </button>
                   );
                 })}
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend><span>4</span> Escolha os acompanhamentos</legend>
+              <p className="field-help">Selecione os itens que deseja incluir na lista e no orçamento.</p>
+              <div className="meat-combo">
+                <button className="combo-trigger" onClick={() => setAccompanimentMenuOpen((open) => !open)} aria-expanded={accompanimentMenuOpen}>
+                  <span><b>{selectedAccompaniments.length} acompanhamentos selecionados</b><small>Tradicionais, saladas, bebidas e apoio</small></span>
+                  <i>{accompanimentMenuOpen ? "−" : "+"}</i>
+                </button>
+                {accompanimentMenuOpen && (
+                  <div className="combo-menu companion-menu">
+                    <div className="combo-options">
+                      {(["Tradicionais", "Saladas e legumes", "Bebidas", "Apoio"] as const).map((category) => (
+                        <section className="option-group" key={category}>
+                          <h3>{category}<small>{accompaniments.filter((item) => item.category === category).length} opções</small></h3>
+                          {accompaniments.filter((item) => item.category === category).map((item) => {
+                            const active = selectedAccompaniments.includes(item.id);
+                            return (
+                              <button key={item.id} onClick={() => toggleAccompaniment(item.id)} className={active ? "active" : ""}>
+                                <span className="companion-icon">{item.icon}</span>
+                                <span><b>{item.name}</b><small>{item.note}</small></span>
+                                <i>{active ? "✓" : "+"}</i>
+                              </button>
+                            );
+                          })}
+                        </section>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="selected-companions">
+                {accompaniments.filter((item) => selectedAccompaniments.includes(item.id)).map((item) => (
+                  <button key={item.id} onClick={() => toggleAccompaniment(item.id)}>
+                    <span>{item.icon}</span>{item.name}<i>×</i>
+                  </button>
+                ))}
               </div>
             </fieldset>
 
@@ -212,7 +311,7 @@ export default function Home() {
               <span>OUTROS ITENS</span>
               {result.extras.map((item) => (
                 <div key={item.name}>
-                  <p><b>{item.name}</b><small>{item.qty} {item.unit} × {money.format(item.price)}</small></p>
+                  <p><b>{item.name}</b><small>{formatQty(item.qty, item.unit)} × {money.format(item.price)}</small></p>
                   <strong>{money.format(item.cost)}</strong>
                 </div>
               ))}
@@ -236,16 +335,13 @@ export default function Home() {
           <span className="step-label light">02 — ACOMPANHAMENTOS</span>
           <h2>Complete a mesa,<br /><em>na medida.</em></h2>
         </div>
-        <div className="extra-grid">
-          <Extra icon="🥖" title="Pão de alho" value={`${Math.ceil(result.guests * 1.5)} unidades`} note="1 a 2 por pessoa" />
-          <Extra icon="🍚" title="Arroz cru" value={`${number.format(result.guests * .06)} kg`} note="Cerca de 60 g por pessoa" />
-          <Extra icon="🍅" title="Vinagrete" value={`${number.format(result.guests * .08)} kg`} note="Cerca de 80 g por pessoa" />
-          <Extra icon="🥕" title="Legumes na brasa" value={`${number.format(result.guests * .1)} kg`} note="Abobrinha, cebola e pimentão" />
-          <Extra icon="🥣" title="Farofa" value={`${number.format(result.guests * .04)} kg`} note="Cerca de 40 g por pessoa" />
-          <Extra icon="🥤" title="Bebidas" value={`${number.format(result.guests * (period === "inteiro" ? 1.8 : 1.2))} litros`} note="Água e refrigerante" />
-          <Extra icon="🧊" title="Gelo" value={`${Math.ceil(result.guests / 5) * 5} kg`} note="Consumo + conservação" />
-          <Extra icon="🧂" title="Sal grosso" value={`${Math.max(1, Math.ceil(result.total / 8))} pacote(s)`} note="Pacotes de 1 kg" />
-        </div>
+        {result.extras.length ? (
+          <div className="extra-grid">
+            {result.extras.map((item) => (
+              <Extra key={item.id} icon={item.icon} title={item.name} value={formatQty(item.qty, item.unit)} note={item.note} />
+            ))}
+          </div>
+        ) : <p className="empty-extras">Nenhum acompanhamento selecionado. Volte à calculadora para montar sua mesa.</p>}
         <p className="tip">Dica da casa: compre as bebidas por último e confirme quantas pessoas realmente bebem álcool.</p>
       </section>
 
