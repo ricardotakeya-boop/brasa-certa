@@ -602,7 +602,7 @@ export default function Home() {
           <span>◷ Ajustado pela duração</span>
         </div>
         <figure className="hero-portrait">
-          <img src="/mestre-da-brasa.png" alt="Mestre churrasqueiro do Brasa Certa" />
+          <img src="mestre-da-brasa.png" alt="Mestre churrasqueiro do Brasa Certa" />
           <figcaption><span>●</span> Da conta à grelha</figcaption>
         </figure>
       </section>
