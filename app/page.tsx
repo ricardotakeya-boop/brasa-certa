@@ -28,6 +28,7 @@ type ItemEdit = { qty?: number; price?: number };
 type AccompanimentContribution = { provided: boolean; responsible: string };
 type StoredCustomAccompaniment = Omit<Accompaniment, "quantity"> & { baseQty: number };
 type SavedBarbecue = {
+  dataVersion?: number;
   id: string;
   name: string;
   eventDate: string;
@@ -51,6 +52,7 @@ type SavedBarbecue = {
 type MeatCategory = "Bovinos" | "Suínos" | "Frangos";
 
 const STORAGE_KEY = "brasa-certa:churrascos:v1";
+const CURRENT_DATA_VERSION = 2;
 
 const meats: Meat[] = [
   { id: "picanha-legado", name: "Picanha", note: "Legado 1855", price: 89.9, share: 1.15, color: "#8e261c", source: "https://www.swift.com.br/legado" },
@@ -100,7 +102,7 @@ const meatCategory = (id: string): MeatCategory =>
       : "Bovinos";
 
 const accompaniments: Accompaniment[] = [
-  { id: "pao-alho", name: "Pão de alho", category: "Tradicionais", icon: "🥖", note: "Pacotes com 6 unidades", unit: "un.", price: 1.98, quantity: (g) => Math.ceil((g * 1.5) / 6) * 6 },
+  { id: "pao-alho", name: "Pão de alho", category: "Tradicionais", icon: "🥖", note: "1 pacote = 6 pães de alho", unit: "pacote", price: 11.88, quantity: (g) => Math.ceil((g * 1.5) / 6) },
   { id: "arroz", name: "Arroz", category: "Tradicionais", icon: "🍚", note: "60 g por pessoa", unit: "kg", price: 8.5, quantity: (g) => g * .06 },
   { id: "farofa", name: "Farofa", category: "Tradicionais", icon: "🥣", note: "40 g por pessoa", unit: "kg", price: 21.9, quantity: (g) => g * .04 },
   { id: "queijo", name: "Queijo coalho", category: "Tradicionais", icon: "🧀", note: "2 espetos por pessoa", unit: "kg", price: 54.9, quantity: (g) => g * .08 },
@@ -123,7 +125,34 @@ const periods = {
 
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const number = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1, minimumFractionDigits: 1 });
-const formatQty = (qty: number, unit: string) => `${unit === "un." || unit === "pct." ? Math.ceil(qty) : number.format(qty)} ${unit}`;
+const formatQty = (qty: number, unit: string) => {
+  if (unit === "pacote") {
+    const packages = Math.ceil(qty);
+    return `${packages} ${packages === 1 ? "pacote" : "pacotes"}`;
+  }
+  return `${unit === "un." || unit === "pct." ? Math.ceil(qty) : number.format(qty)} ${unit}`;
+};
+
+function migrateSavedBarbecue(record: SavedBarbecue): SavedBarbecue {
+  if ((record.dataVersion ?? 1) >= CURRENT_DATA_VERSION) return record;
+  const breadEdits = record.accompanimentEdits?.["pao-alho"];
+  return {
+    ...record,
+    dataVersion: CURRENT_DATA_VERSION,
+    accompanimentEdits: {
+      ...(record.accompanimentEdits ?? {}),
+      ...(breadEdits
+        ? {
+            "pao-alho": {
+              ...breadEdits,
+              qty: breadEdits.qty === undefined ? undefined : Math.ceil(breadEdits.qty / 6),
+              price: breadEdits.price === undefined ? undefined : breadEdits.price * 6,
+            },
+          }
+        : {}),
+    },
+  };
+}
 
 export default function Home() {
   const [adults, setAdults] = useState(12);
@@ -158,7 +187,7 @@ export default function Home() {
     const timer = window.setTimeout(() => {
       try {
         const stored = window.localStorage.getItem(STORAGE_KEY);
-        if (stored) setSavedBarbecues(JSON.parse(stored));
+        if (stored) setSavedBarbecues((JSON.parse(stored) as SavedBarbecue[]).map(migrateSavedBarbecue));
       } catch {
         setStorageStatus("Não foi possível ler os churrascos salvos neste aparelho.");
       }
@@ -300,6 +329,7 @@ export default function Home() {
       ? `Churrasco de ${new Date(`${eventDate}T12:00:00`).toLocaleDateString("pt-BR")}`
       : "Meu churrasco";
     return {
+      dataVersion: CURRENT_DATA_VERSION,
       id,
       name: eventName.trim() || fallbackName,
       eventDate,
@@ -377,6 +407,7 @@ export default function Home() {
   }
 
   function openBarbecue(record: SavedBarbecue) {
+    record = migrateSavedBarbecue(record);
     setEventName(record.name);
     setEventDate(record.eventDate);
     setEventNotes(record.notes);
@@ -446,7 +477,7 @@ export default function Home() {
     try {
       const data = JSON.parse(await file.text());
       if (data?.app !== "Brasa Certa" || !Array.isArray(data.churrascos)) throw new Error("invalid");
-      const imported = data.churrascos as SavedBarbecue[];
+      const imported = (data.churrascos as SavedBarbecue[]).map(migrateSavedBarbecue);
       if (imported.some((item) => !item.id || !item.name || !item.summary)) throw new Error("invalid");
       const merged = new Map(savedBarbecues.map((item) => [item.id, item]));
       imported.forEach((item) => merged.set(item.id, item));
@@ -759,7 +790,7 @@ export default function Home() {
                 {result.extras.map((item) => (
                   <div className="editable-row companion-editable-row" key={item.id}>
                     <div className="editable-name"><span className="companion-icon">{item.icon}</span><span><b>{item.name}</b><small>{item.category}</small></span></div>
-                    <label><small>Qtd. ({item.unit})</small><input type="number" min="0" step=".1" value={Number(item.qty.toFixed(2))} onChange={(e) => updateAccompaniment(item.id, "qty", Number(e.target.value))} /></label>
+                    <label><small>Qtd. ({item.unit === "pacote" ? "pacotes" : item.unit})</small><input type="number" min="0" step={item.unit === "pacote" || item.unit === "pct." || item.unit === "un." ? "1" : ".1"} value={Number(item.qty.toFixed(2))} onChange={(e) => updateAccompaniment(item.id, "qty", Number(e.target.value))} /></label>
                     <label><small>R$ por {item.unit}</small><input type="number" min="0" step=".01" value={item.price} onChange={(e) => updateAccompaniment(item.id, "price", Number(e.target.value))} /></label>
                     <button className="remove-item" onClick={() => toggleAccompaniment(item.id)} aria-label={`Remover ${item.name}`}>×</button>
                     <div className="contribution-controls" aria-label={`Responsável pelo acompanhamento ${item.name}`}>
