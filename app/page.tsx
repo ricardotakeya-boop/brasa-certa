@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Cell, SheetData } from "write-excel-file/universal";
+import { calculateFamilyRate } from "./family-rate";
+import type { FamilyRateGuest as Guest } from "./family-rate";
 
 type Meat = {
   id: string;
@@ -47,6 +49,7 @@ type SavedBarbecue = {
   meatEdits: Record<string, ItemEdit>;
   accompanimentEdits: Record<string, ItemEdit>;
   accompanimentContributions?: Record<string, AccompanimentContribution>;
+  guests?: Guest[];
   summary: { guests: number; grandTotal: number; perPerson: number; perAdult?: number; perChild?: number };
 };
 type MeatCategory = "Bovinos" | "Suínos" | "Frangos";
@@ -172,6 +175,9 @@ export default function Home() {
   const [newAccompaniment, setNewAccompaniment] = useState({ name: "", category: "Tradicionais" as Accompaniment["category"], unit: "kg", qty: "", price: "" });
   const [reserve, setReserve] = useState(true);
   const [chargeChildren, setChargeChildren] = useState(true);
+  const [guests, setGuests] = useState<Guest[]>([]);
+  const [guestListOpen, setGuestListOpen] = useState(false);
+  const [newGuest, setNewGuest] = useState({ name: "", family: "", type: "adult" as Guest["type"] });
   const [eventName, setEventName] = useState("Churrasco em família");
   const [eventDate, setEventDate] = useState("");
   const [eventNotes, setEventNotes] = useState("");
@@ -195,6 +201,13 @@ export default function Home() {
     return () => window.clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    const namedAdults = guests.filter((guest) => guest.type === "adult").length;
+    const namedChildren = guests.filter((guest) => guest.type === "child").length;
+    setAdults((current) => Math.max(current, namedAdults));
+    setChildren((current) => Math.max(current, namedChildren));
+  }, [guests]);
+
   const result = useMemo(() => {
     const p = periods[period];
     const base = adults * p.adult + children * p.child;
@@ -211,11 +224,11 @@ export default function Home() {
       return { ...m, kg, price, cost: kg * price };
     });
     const cost = rows.reduce((sum, row) => sum + row.cost, 0);
-    const guests = adults + children;
+    const guestCount = adults + children;
     const extras = allAccompaniments
       .filter((item) => selectedAccompaniments.includes(item.id))
       .map((item) => {
-        const suggestedQty = item.quantity(guests, period === "inteiro", total);
+        const suggestedQty = item.quantity(guestCount, period === "inteiro", total);
         const qty = accompanimentEdits[item.id]?.qty ?? suggestedQty;
         const price = accompanimentEdits[item.id]?.price ?? item.price;
         const contribution = accompanimentContributions[item.id] ?? { provided: false, responsible: "" };
@@ -234,12 +247,13 @@ export default function Home() {
     const rateUnits = adults + (chargeChildren ? children * .5 : 0);
     const perAdult = rateUnits ? grandTotal / rateUnits : 0;
     const perChild = chargeChildren ? perAdult * .5 : 0;
+    const familyRate = calculateFamilyRate({ guests, adults, children, perAdult, perChild });
     return {
       total: actualMeatKg,
       suggestedTotal: total,
       rows,
       cost,
-      guests,
+      guests: guestCount,
       extras,
       extrasCost,
       grandTotal,
@@ -247,8 +261,9 @@ export default function Home() {
       perAdult,
       perChild,
       perPerson: perAdult,
+      ...familyRate,
     };
-  }, [adults, children, period, reserve, chargeChildren, selected, selectedAccompaniments, allMeats, allAccompaniments, meatEdits, accompanimentEdits, accompanimentContributions]);
+  }, [adults, children, period, reserve, chargeChildren, selected, selectedAccompaniments, allMeats, allAccompaniments, meatEdits, accompanimentEdits, accompanimentContributions, guests]);
 
   function toggleMeat(id: string) {
     setSelected((current) =>
@@ -273,10 +288,34 @@ export default function Home() {
   }
 
   function updateContribution(id: string, changes: Partial<AccompanimentContribution>) {
-    setAccompanimentContributions((current) => ({
-      ...current,
-      [id]: { provided: false, responsible: "", ...current[id], ...changes },
-    }));
+    setAccompanimentContributions((current) => {
+      const existing = current[id] ?? { provided: false, responsible: "" };
+      return { ...current, [id]: { ...existing, ...changes } };
+    });
+  }
+
+  function addGuest() {
+    const name = newGuest.name.trim();
+    const family = newGuest.family.trim();
+    if (!name || !family) return;
+    const guest: Guest = {
+      id: `guest-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      name,
+      family,
+      type: newGuest.type,
+    };
+    setGuests((current) => [...current, guest]);
+    if (guest.type === "adult" && result.namedAdults >= adults) setAdults((current) => Math.min(500, current + 1));
+    if (guest.type === "child" && result.namedChildren >= children) setChildren((current) => Math.min(500, current + 1));
+    setNewGuest((current) => ({ name: "", family: current.family, type: current.type }));
+  }
+
+  function updateGuest(id: string, changes: Partial<Guest>) {
+    setGuests((current) => current.map((guest) => guest.id === id ? { ...guest, ...changes } : guest));
+  }
+
+  function removeGuest(id: string) {
+    setGuests((current) => current.filter((guest) => guest.id !== id));
   }
 
   function addCustomMeat() {
@@ -348,6 +387,7 @@ export default function Home() {
       meatEdits,
       accompanimentEdits,
       accompanimentContributions,
+      guests,
       summary: {
         guests: result.guests,
         grandTotal: result.grandTotal,
@@ -390,6 +430,9 @@ export default function Home() {
     setNewAccompaniment({ name: "", category: "Tradicionais", unit: "kg", qty: "", price: "" });
     setReserve(true);
     setChargeChildren(true);
+    setGuests([]);
+    setGuestListOpen(false);
+    setNewGuest({ name: "", family: "", type: "adult" });
     setEventName("");
     setEventDate("");
     setEventNotes("");
@@ -416,6 +459,8 @@ export default function Home() {
     setPeriod(record.period);
     setReserve(record.reserve);
     setChargeChildren(record.chargeChildren ?? true);
+    setGuests(record.guests ?? []);
+    setGuestListOpen(Boolean(record.guests?.length));
     setSelected(record.selected);
     setSelectedAccompaniments(record.selectedAccompaniments);
     setCustomMeats(record.customMeats);
@@ -559,6 +604,34 @@ export default function Home() {
         item.provided ? "Família traz" : "Compra",
         item.provided ? "Não cobrar" : currency(item.cost),
       ]),
+      ...(guests.length ? [
+        [],
+        [section("CONVIDADOS"), null, null, null, null, null, null, null],
+        [header("Nome"), header("Família"), header("Tipo"), header("Cota"), header("Valor"), null, null, null],
+        ...result.guestCharges.map((guest): Cell[] => [
+          guest.name,
+          guest.family,
+          guest.type === "adult" ? "Adulto" : "Criança",
+          guest.type === "adult" ? "1 cota" : chargeChildren ? "Meia cota" : "Não cobrada",
+          currency(guest.amount),
+          null,
+          null,
+          null,
+        ]),
+        [],
+        [section("RATEIO POR FAMÍLIA"), null, null, null, null, null, null, null],
+        [header("Família"), header("Convidados"), header("Quantidade"), null, null, null, null, header("Total")],
+        ...result.familyCharges.map((family): Cell[] => [
+          family.family,
+          family.members.join(", "),
+          family.members.length,
+          null,
+          null,
+          null,
+          null,
+          currency(family.total),
+        ]),
+      ] as SheetData : []),
       [],
       [section("RESUMO"), null, null, null, null, null, null, null],
       summary("Total de proteínas", result.cost),
@@ -673,10 +746,70 @@ export default function Home() {
             <fieldset>
               <legend><span>1</span> Quantas pessoas?</legend>
               <div className="people-grid">
-                <Counter label="Adultos" hint="A partir de 13 anos" value={adults} setValue={setAdults} icon="♟" />
-                <Counter label="Crianças" hint="De 5 a 12 anos" value={children} setValue={setChildren} icon="♟" />
+                <Counter label="Adultos" hint="A partir de 13 anos" value={adults} minValue={result.namedAdults} setValue={setAdults} icon="♟" />
+                <Counter label="Crianças" hint="De 5 a 12 anos" value={children} minValue={result.namedChildren} setValue={setChildren} icon="♟" />
               </div>
               <p className="tiny-note">Crianças de até 4 anos não entram no cálculo.</p>
+              <div className={`guest-manager ${guestListOpen ? "open" : ""}`}>
+                <button
+                  className="guest-manager-trigger"
+                  onClick={() => setGuestListOpen((open) => !open)}
+                  aria-expanded={guestListOpen}
+                >
+                  <span>
+                    <b>Nomear convidados e famílias</b>
+                    <small>{guests.length ? `${guests.length} convidado(s) nomeado(s)` : "Opcional · organize o rateio por família"}</small>
+                  </span>
+                  <i>{guestListOpen ? "−" : "+"}</i>
+                </button>
+                {guestListOpen && (
+                  <div className="guest-manager-body">
+                    <p>Cadastre quem vai participar. Se a lista ultrapassar a quantidade acima, o total de pessoas será atualizado automaticamente.</p>
+                    <div className="guest-add-grid">
+                      <label>
+                        <span>Nome</span>
+                        <input value={newGuest.name} onChange={(e) => setNewGuest({ ...newGuest, name: e.target.value })} placeholder="Ex.: Mari" maxLength={60} />
+                      </label>
+                      <label>
+                        <span>Família</span>
+                        <input value={newGuest.family} onChange={(e) => setNewGuest({ ...newGuest, family: e.target.value })} placeholder="Ex.: Família Mari" maxLength={60} />
+                      </label>
+                      <label>
+                        <span>Tipo</span>
+                        <select value={newGuest.type} onChange={(e) => setNewGuest({ ...newGuest, type: e.target.value as Guest["type"] })}>
+                          <option value="adult">Adulto</option>
+                          <option value="child">Criança</option>
+                        </select>
+                      </label>
+                      <button onClick={addGuest} disabled={!newGuest.name.trim() || !newGuest.family.trim()}>Adicionar convidado</button>
+                    </div>
+                    {guests.length > 0 ? (
+                      <div className="guest-list">
+                        <div className="guest-list-head"><span>Nome</span><span>Família</span><span>Tipo</span><span>Cota</span><span /></div>
+                        {guests.map((guest) => (
+                          <div className="guest-row" key={guest.id}>
+                            <input aria-label={`Nome de ${guest.name}`} value={guest.name} onChange={(e) => updateGuest(guest.id, { name: e.target.value })} maxLength={60} />
+                            <input aria-label={`Família de ${guest.name}`} value={guest.family} onChange={(e) => updateGuest(guest.id, { family: e.target.value })} maxLength={60} />
+                            <select aria-label={`Tipo de ${guest.name}`} value={guest.type} onChange={(e) => updateGuest(guest.id, { type: e.target.value as Guest["type"] })}>
+                              <option value="adult">Adulto</option>
+                              <option value="child">Criança</option>
+                            </select>
+                            <output>{money.format(guest.type === "child" ? result.perChild : result.perAdult)}</output>
+                            <button aria-label={`Remover ${guest.name}`} onClick={() => removeGuest(guest.id)}>×</button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="guest-empty">Nenhum convidado nomeado ainda.</div>
+                    )}
+                    {(result.unassignedAdults > 0 || result.unassignedChildren > 0) && (
+                      <p className="guest-balance">
+                        Ainda sem nome: {result.unassignedAdults} adulto(s) e {result.unassignedChildren} criança(s).
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
             </fieldset>
 
             <fieldset>
@@ -900,6 +1033,20 @@ export default function Home() {
               </small>
               {!result.rateUnits && result.grandTotal > 0 && <small className="rate-warning">Inclua ao menos um adulto para calcular o rateio.</small>}
             </div>
+            {guests.length > 0 && (
+              <div className="family-breakdown">
+                <div className="family-breakdown-title">
+                  <span>RATEIO POR FAMÍLIA</span>
+                  <small>{result.familyCharges.length} grupo(s)</small>
+                </div>
+                {result.familyCharges.map((family) => (
+                  <div className="family-charge" key={family.family}>
+                    <span><b>{family.family}</b><small>{family.members.join(", ")}</small></span>
+                    <strong>{money.format(family.total)}</strong>
+                  </div>
+                ))}
+              </div>
+            )}
             <button className="save-plan-button" onClick={saveBarbecue}>
               <span>＋</span> {activeSavedId ? "Salvar alterações" : "Salvar churrasco"}
             </button>
@@ -942,6 +1089,33 @@ export default function Home() {
                 </tr>
               ))}</tbody>
             </table>
+            {guests.length > 0 && (
+              <>
+                <h2>Convidados</h2>
+                <table>
+                  <thead><tr><th>Nome</th><th>Família</th><th>Tipo</th><th>Valor individual</th></tr></thead>
+                  <tbody>{result.guestCharges.map((guest) => (
+                    <tr key={guest.id}>
+                      <td>{guest.name}</td>
+                      <td>{guest.family}</td>
+                      <td>{guest.type === "adult" ? "Adulto" : "Criança"}</td>
+                      <td>{money.format(guest.amount)}</td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+                <h2>Rateio por família</h2>
+                <table>
+                  <thead><tr><th>Família</th><th>Convidados</th><th>Total</th></tr></thead>
+                  <tbody>{result.familyCharges.map((family) => (
+                    <tr key={family.family}>
+                      <td>{family.family}</td>
+                      <td>{family.members.join(", ")}</td>
+                      <td>{money.format(family.total)}</td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              </>
+            )}
             <div className="print-totals">
               <p><span>Proteínas</span><b>{money.format(result.cost)}</b></p>
               <p><span>Acompanhamentos</span><b>{money.format(result.extrasCost)}</b></p>
@@ -1043,13 +1217,13 @@ export default function Home() {
   );
 }
 
-function Counter({ label, hint, value, setValue, icon }: { label: string; hint: string; value: number; setValue: (n: number) => void; icon: string }) {
+function Counter({ label, hint, value, minValue = 0, setValue, icon }: { label: string; hint: string; value: number; minValue?: number; setValue: (n: number) => void; icon: string }) {
   return (
     <div className="counter-card">
       <div className="counter-label"><span>{icon}</span><div><b>{label}</b><small>{hint}</small></div></div>
       <div className="counter">
-        <button aria-label={`Diminuir ${label}`} onClick={() => setValue(Math.max(0, value - 1))}>−</button>
-        <input aria-label={label} type="number" min="0" max="500" value={value} onChange={(e) => setValue(Math.max(0, Math.min(500, Number(e.target.value))))} />
+        <button aria-label={`Diminuir ${label}`} onClick={() => setValue(Math.max(minValue, value - 1))}>−</button>
+        <input aria-label={label} type="number" min={minValue} max="500" value={value} onChange={(e) => setValue(Math.max(minValue, Math.min(500, Number(e.target.value))))} />
         <button aria-label={`Aumentar ${label}`} onClick={() => setValue(Math.min(500, value + 1))}>+</button>
       </div>
     </div>
