@@ -42,6 +42,7 @@ type SavedBarbecue = {
   period: "almoco" | "jantar" | "inteiro";
   reserve: boolean;
   chargeChildren?: boolean;
+  familyOwnDrinks?: boolean;
   selected: string[];
   selectedAccompaniments: string[];
   customMeats: Meat[];
@@ -175,6 +176,8 @@ export default function Home() {
   const [newAccompaniment, setNewAccompaniment] = useState({ name: "", category: "Tradicionais" as Accompaniment["category"], unit: "kg", qty: "", price: "" });
   const [reserve, setReserve] = useState(true);
   const [chargeChildren, setChargeChildren] = useState(true);
+  const [familyOwnDrinks, setFamilyOwnDrinks] = useState(false);
+  const [printMode, setPrintMode] = useState<"pre" | "post">("post");
   const [guests, setGuests] = useState<Guest[]>([]);
   const [guestListOpen, setGuestListOpen] = useState(false);
   const [newGuest, setNewGuest] = useState({ name: "", family: "", type: "adult" as Guest["type"] });
@@ -380,6 +383,7 @@ export default function Home() {
       period,
       reserve,
       chargeChildren,
+      familyOwnDrinks,
       selected: [...selected],
       selectedAccompaniments: [...selectedAccompaniments],
       customMeats,
@@ -430,6 +434,7 @@ export default function Home() {
     setNewAccompaniment({ name: "", category: "Tradicionais", unit: "kg", qty: "", price: "" });
     setReserve(true);
     setChargeChildren(true);
+    setFamilyOwnDrinks(false);
     setGuests([]);
     setGuestListOpen(false);
     setNewGuest({ name: "", family: "", type: "adult" });
@@ -459,6 +464,7 @@ export default function Home() {
     setPeriod(record.period);
     setReserve(record.reserve);
     setChargeChildren(record.chargeChildren ?? true);
+    setFamilyOwnDrinks(record.familyOwnDrinks ?? false);
     setGuests(record.guests ?? []);
     setGuestListOpen(Boolean(record.guests?.length));
     setSelected(record.selected);
@@ -661,6 +667,13 @@ export default function Home() {
     } catch {
       setStorageStatus("Não foi possível gerar a planilha Excel. Tente novamente.");
     }
+  }
+
+  function printReport(mode: "pre" | "post") {
+    setPrintMode(mode);
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => window.print());
+    });
   }
 
   return (
@@ -977,6 +990,13 @@ export default function Home() {
                 <small>{chargeChildren ? "Cada criança paga meia cota de adulto." : "Crianças não pagam; o total fica somente com os adultos."}</small>
               </span>
             </label>
+            <label className="reserve-row family-drinks-row">
+              <input type="checkbox" checked={familyOwnDrinks} onChange={(e) => setFamilyOwnDrinks(e.target.checked)} />
+              <span>
+                <b>Cada família leva sua própria bebida</b>
+                <small>{familyOwnDrinks ? "A orientação será destacada no relatório pré-evento." : "Ative para incluir essa mensagem na organização do churrasco."}</small>
+              </span>
+            </label>
           </div>
 
           <aside className="result-card" aria-live="polite">
@@ -1052,20 +1072,77 @@ export default function Home() {
             </button>
             {storageStatus && <p className="storage-status" role="status">{storageStatus}</p>}
             <div className="export-actions">
-              <button onClick={() => window.print()}><span>▣</span> Salvar em PDF</button>
-              <button onClick={exportExcel}><span>▦</span> Baixar Excel</button>
+              <button onClick={() => printReport("pre")}><span>☑</span> PDF pré-evento</button>
+              <button onClick={() => printReport("post")}><span>▣</span> PDF prestação de contas</button>
+              <button onClick={exportExcel}><span>▦</span> Excel completo</button>
             </div>
             <a className="swift-link" href="https://www.swift.com.br/swift-legado" target="_blank" rel="noreferrer">
               Conferir linha Legado <span>↗</span>
             </a>
             <p className="price-note">Preços de referência consultados em 28/07/2026. Podem variar por CEP, estoque e promoções.</p>
           </aside>
-          <section className="print-report">
+          <section className={`print-report pre-event-report ${printMode === "pre" ? "active-print" : ""}`}>
             <header>
-              <span>BRASA CERTA</span>
-              <h1>Plano de churrasco</h1>
+              <span>BRASA CERTA · PRÉ-EVENTO</span>
+              <h1>Lista de organização</h1>
               <p>
-                {result.guests} convidados · {periods[period].label} · {reserve ? "com 10% de margem" : "sem margem"} ·
+                {eventName.trim() || "Meu churrasco"} · {eventDate ? new Date(`${eventDate}T12:00:00`).toLocaleDateString("pt-BR") : "data a definir"} · {result.guests} convidados · {periods[period].label}
+              </p>
+            </header>
+            {familyOwnDrinks && (
+              <div className="pre-event-message">
+                <b>Mensagem para as famílias</b>
+                <p>Cada família deve levar sua própria bebida, de acordo com sua preferência e consumo.</p>
+              </div>
+            )}
+            <h2>O que será comprado</h2>
+            <table>
+              <thead><tr><th>Item</th><th>Categoria</th><th>Quantidade</th><th>Organização</th></tr></thead>
+              <tbody>
+                {result.rows.map((item) => (
+                  <tr key={item.id}><td>{item.name}</td><td>{meatCategory(item.id)}</td><td>{number.format(item.kg)} kg</td><td>Comprar</td></tr>
+                ))}
+                {result.extras
+                  .filter((item) => !item.provided && !(familyOwnDrinks && item.category === "Bebidas"))
+                  .map((item) => (
+                    <tr key={item.id}><td>{item.name}</td><td>{item.category}</td><td>{formatQty(item.qty, item.unit)}</td><td>Comprar</td></tr>
+                  ))}
+              </tbody>
+            </table>
+            <h2>O que as pessoas ou famílias levarão</h2>
+            <table>
+              <thead><tr><th>Item</th><th>Quantidade</th><th>Responsável</th><th>Situação</th></tr></thead>
+              <tbody>
+                {result.extras.filter((item) => item.provided).map((item) => (
+                  <tr key={item.id}>
+                    <td>{item.name}</td><td>{formatQty(item.qty, item.unit)}</td><td>{item.responsible || "A definir"}</td><td>{item.responsible ? "Combinado" : "A combinar"}</td>
+                  </tr>
+                ))}
+                {familyOwnDrinks && <tr><td>Bebidas de consumo próprio</td><td>Conforme preferência</td><td>Cada família</td><td>Combinado</td></tr>}
+                {!result.extras.some((item) => item.provided) && !familyOwnDrinks && (
+                  <tr><td colSpan={4}>Nenhum item atribuído a uma família até o momento.</td></tr>
+                )}
+              </tbody>
+            </table>
+            {guests.length > 0 && (
+              <>
+                <h2>Famílias participantes</h2>
+                <table>
+                  <thead><tr><th>Família ou grupo</th><th>Convidados</th></tr></thead>
+                  <tbody>{result.familyCharges.map((family) => (
+                    <tr key={family.family}><td>{family.family}</td><td>{family.members.join(", ")}</td></tr>
+                  ))}</tbody>
+                </table>
+              </>
+            )}
+            <footer>Lista para alinhamento antes do evento. Este relatório não apresenta preços.</footer>
+          </section>
+          <section className={`print-report post-event-report ${printMode === "post" ? "active-print" : ""}`}>
+            <header>
+              <span>BRASA CERTA · PÓS-EVENTO</span>
+              <h1>Prestação de contas</h1>
+              <p>
+                {eventName.trim() || "Meu churrasco"} · {result.guests} convidados · {periods[period].label} · {reserve ? "com 10% de margem" : "sem margem"} ·
                 {chargeChildren ? " crianças com meia cota" : " crianças não cobradas"}
               </p>
             </header>
@@ -1089,33 +1166,38 @@ export default function Home() {
                 </tr>
               ))}</tbody>
             </table>
-            {guests.length > 0 && (
-              <>
-                <h2>Convidados</h2>
-                <table>
-                  <thead><tr><th>Nome</th><th>Família</th><th>Tipo</th><th>Valor individual</th></tr></thead>
-                  <tbody>{result.guestCharges.map((guest) => (
+            <h2>Quanto ficou por pessoa</h2>
+            <table>
+              <thead><tr><th>Nome</th><th>Família</th><th>Tipo</th><th>Quantidade</th><th>Valor por pessoa</th></tr></thead>
+              <tbody>
+                {result.guestCharges.map((guest) => (
                     <tr key={guest.id}>
                       <td>{guest.name}</td>
                       <td>{guest.family}</td>
                       <td>{guest.type === "adult" ? "Adulto" : "Criança"}</td>
+                      <td>1</td>
                       <td>{money.format(guest.amount)}</td>
                     </tr>
-                  ))}</tbody>
-                </table>
-                <h2>Rateio por família</h2>
-                <table>
-                  <thead><tr><th>Família</th><th>Convidados</th><th>Total</th></tr></thead>
-                  <tbody>{result.familyCharges.map((family) => (
-                    <tr key={family.family}>
-                      <td>{family.family}</td>
-                      <td>{family.members.join(", ")}</td>
-                      <td>{money.format(family.total)}</td>
-                    </tr>
-                  ))}</tbody>
-                </table>
-              </>
-            )}
+                ))}
+                {result.unassignedAdults > 0 && (
+                  <tr><td>Adultos ainda não nomeados</td><td>Sem grupo definido</td><td>Adulto</td><td>{result.unassignedAdults}</td><td>{money.format(result.perAdult)}</td></tr>
+                )}
+                {result.unassignedChildren > 0 && (
+                  <tr><td>Crianças ainda não nomeadas</td><td>Sem grupo definido</td><td>Criança</td><td>{result.unassignedChildren}</td><td>{money.format(result.perChild)}</td></tr>
+                )}
+              </tbody>
+            </table>
+            <h2>Quanto ficou por família ou grupo</h2>
+            <table>
+              <thead><tr><th>Família ou grupo</th><th>Convidados</th><th>Total</th></tr></thead>
+              <tbody>{result.familyCharges.map((family) => (
+                <tr key={family.family}>
+                  <td>{family.family}</td>
+                  <td>{family.members.join(", ")}</td>
+                  <td>{money.format(family.total)}</td>
+                </tr>
+              ))}</tbody>
+            </table>
             <div className="print-totals">
               <p><span>Proteínas</span><b>{money.format(result.cost)}</b></p>
               <p><span>Acompanhamentos</span><b>{money.format(result.extrasCost)}</b></p>
@@ -1123,7 +1205,7 @@ export default function Home() {
               <strong><span>Valor por adulto</span>{money.format(result.perAdult)}</strong>
               <strong><span>Valor por criança</span>{money.format(result.perChild)}</strong>
             </div>
-            <footer>Estimativa para planejamento. Preços e quantidades podem ser ajustados na calculadora.</footer>
+            <footer>Prestação de contas. Atualize na calculadora as quantidades e os valores efetivamente pagos antes de gerar este relatório.</footer>
           </section>
         </div>
       </section>
