@@ -63,7 +63,14 @@ test("builds the public GitHub Pages version with the guest list feature", async
   assert.match(page, /Nomear convidados e famílias/);
   assert.match(page, /RATEIO POR FAMÍLIA/);
   assert.match(page, /section\("CONVIDADOS"\)/);
-  assert.match(page, /<h2>Convidados<\/h2>/);
+  assert.match(page, /<h2>Quanto ficou por pessoa<\/h2>/);
+  assert.match(page, /PDF pré-evento/);
+  assert.match(page, /PDF prestação de contas/);
+  assert.match(page, /Cada família deve levar sua própria bebida/);
+  assert.match(page, /O que será comprado/);
+  assert.match(page, /Quanto ficou por pessoa/);
+  assert.match(page, /Quanto ficou por família ou grupo/);
   assert.match(css, /\.guest-add-grid/);
   assert.match(css, /\.family-breakdown/);
+  assert.match(css, /\.print-report\.active-print/);
 });
