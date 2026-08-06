@@ -217,12 +217,14 @@ legend span { display:inline-grid; place-items:center; width:29px; height:29px; 
 .save-plan-button span { margin-right:5px; }
 .storage-status { margin:0 22px 10px; color:#c0c8c2; font-size:9px; line-height:1.45; text-align:center; }
 .export-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:0 20px 12px; }
+.export-actions button:last-child { grid-column:1 / -1; }
 .export-actions button { border:1px solid #56615a; background:#26322c; color:#fff; padding:12px 8px; cursor:pointer; font-size:9px; font-weight:900; letter-spacing:.5px; text-transform:uppercase; }
 .export-actions button:hover { border-color:#e9a271; color:#ffc18c; }
 .export-actions button span { margin-right:5px; color:#e9a271; }
 .swift-link { display:flex; justify-content:space-between; margin:0 20px; padding:13px 14px; background:var(--orange); color:#211b16; text-decoration:none; font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:.7px; }
 .price-note { color:#778079; font-size:8px; line-height:1.5; padding:0 25px 20px; text-align:center; }
 .print-report { display:none; }
+.family-drinks-row { border-top:1px solid var(--line); background:#fff7ef; }
 .saved-section { padding:82px 5vw 92px; background:#f4f0e7; border-top:1px solid var(--line); }
 .saved-shell { max-width:1180px; margin:auto; }
 .saved-header { display:flex; align-items:flex-end; justify-content:space-between; gap:35px; margin-bottom:34px; }
@@ -369,7 +371,8 @@ footer>span { font-size:10px; color:#79817c; }
   .calculator-section > * { display:none !important; }
   .calculator-section > .calculator-grid { display:block !important; max-width:none !important; }
   .calculator-grid > * { display:none !important; }
-  .calculator-grid > .print-report { display:block !important; font-family:Arial, sans-serif; color:#111; }
+  .calculator-grid > .print-report { display:none !important; font-family:Arial, sans-serif; color:#111; }
+  .calculator-grid > .print-report.active-print { display:block !important; }
   .print-report header { display:block !important; padding:0 0 18px; border-bottom:3px solid #b53b28; background:none; color:#111; }
   .print-report header>span { color:#b53b28; font-size:11px; font-weight:900; letter-spacing:2px; }
   .print-report h1 { margin:5px 0; font:400 34px Georgia; }
@@ -379,6 +382,10 @@ footer>span { font-size:10px; color:#79817c; }
   .print-report th { padding:7px 6px; background:#f1ede5; text-align:left; border-bottom:1px solid #aaa; }
   .print-report td { padding:7px 6px; border-bottom:1px solid #ddd; }
   .print-report th:nth-last-child(-n+3),.print-report td:nth-last-child(-n+3) { text-align:right; }
+  .pre-event-report th,.pre-event-report td { text-align:left !important; }
+  .pre-event-message { margin:18px 0 8px; padding:14px 16px; border:2px solid #b53b28; background:#fff4eb; }
+  .pre-event-message b { color:#b53b28; font-size:11px; text-transform:uppercase; letter-spacing:.8px; }
+  .pre-event-message p { margin:6px 0 0; font-size:11px; line-height:1.45; }
   .print-totals { width:54%; margin:25px 0 0 auto; }
   .print-totals p { display:flex; justify-content:space-between; margin:0; padding:7px 0; border-bottom:1px solid #ddd; font-size:10px; }
   .print-totals strong { display:flex; justify-content:space-between; margin-top:10px; padding:12px; background:#17201c; color:#fff; font-size:15px; }
