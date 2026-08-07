@@ -189,6 +189,9 @@ export default function Home() {
   const [chargeChildren, setChargeChildren] = useState(true);
   const [familyOwnDrinks, setFamilyOwnDrinks] = useState(false);
   const [printMode, setPrintMode] = useState<"pre" | "post">("post");
+  const [mobileReportOpen, setMobileReportOpen] = useState(false);
+  const [mobileReportMode, setMobileReportMode] = useState<"pre" | "post">("pre");
+  const [shareStatus, setShareStatus] = useState("");
   const [guests, setGuests] = useState<Guest[]>([]);
   const [guestListOpen, setGuestListOpen] = useState(false);
   const [newGuest, setNewGuest] = useState({ name: "", family: "", type: "adult" as Guest["type"] });
@@ -687,6 +690,94 @@ export default function Home() {
     });
   }
 
+  function openMobileReport(mode: "pre" | "post" = "pre") {
+    setMobileReportMode(mode);
+    setShareStatus("");
+    setMobileReportOpen(true);
+  }
+
+  function buildReportText(mode: "pre" | "post") {
+    const name = eventName.trim() || "Meu churrasco";
+    const date = eventDate ? new Date(`${eventDate}T12:00:00`).toLocaleDateString("pt-BR") : "data a definir";
+    if (mode === "pre") {
+      const purchases = [
+        ...result.rows.map((item) => `• ${item.name}: ${number.format(item.kg)} kg`),
+        ...result.extras
+          .filter((item) => !item.provided && !(familyOwnDrinks && item.category === "Bebidas"))
+          .map((item) => `• ${item.name}: ${formatQty(item.qty, item.unit)}`),
+      ];
+      const contributions = result.extras
+        .filter((item) => item.provided)
+        .map((item) => `• ${item.name}: ${formatQty(item.qty, item.unit)} — ${item.responsible || "responsável a definir"}`);
+      if (familyOwnDrinks) contributions.push("• Bebidas de consumo próprio — cada família leva a sua");
+      return [
+        `🔥 *${name}*`,
+        `📅 ${date} · ${result.guests} convidados · ${periods[period].label}`,
+        "",
+        "*PRÉ-EVENTO · LISTA DE ORGANIZAÇÃO*",
+        "",
+        "*Comprar*",
+        ...(purchases.length ? purchases : ["• Nenhum item definido"]),
+        "",
+        "*Pessoas ou famílias levam*",
+        ...(contributions.length ? contributions : ["• Nenhum item atribuído até o momento"]),
+        ...(familyOwnDrinks ? ["", "🥤 Cada família deve levar sua própria bebida, conforme sua preferência e consumo."] : []),
+      ].join("\n");
+    }
+
+    return [
+      `🔥 *${name}*`,
+      `👥 ${result.guests} convidados · ${periods[period].label}`,
+      "",
+      "*PRESTAÇÃO DE CONTAS*",
+      `Total: *${money.format(result.grandTotal)}*`,
+      `Por adulto: ${money.format(result.perAdult)}`,
+      `Por criança: ${money.format(result.perChild)}`,
+      "",
+      "*Por família ou grupo*",
+      ...result.familyCharges.map((family) => `• ${family.family}: *${money.format(family.total)}* — ${family.members.join(", ")}`),
+    ].join("\n");
+  }
+
+  async function copyMobileReport() {
+    const text = buildReportText(mobileReportMode);
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const field = document.createElement("textarea");
+        field.value = text;
+        field.style.position = "fixed";
+        field.style.opacity = "0";
+        document.body.appendChild(field);
+        field.select();
+        document.execCommand("copy");
+        field.remove();
+      }
+      setShareStatus("Texto copiado. Agora é só colar no WhatsApp.");
+    } catch {
+      setShareStatus("Não foi possível copiar automaticamente. Tente usar Compartilhar.");
+    }
+  }
+
+  async function shareMobileReport() {
+    const text = buildReportText(mobileReportMode);
+    if (!navigator.share) {
+      await copyMobileReport();
+      return;
+    }
+    try {
+      await navigator.share({
+        title: `${eventName.trim() || "Meu churrasco"} — ${mobileReportMode === "pre" ? "pré-evento" : "prestação de contas"}`,
+        text,
+      });
+      setShareStatus("Relatório compartilhado.");
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      setShareStatus("O compartilhamento não abriu. Você ainda pode copiar o texto.");
+    }
+  }
+
   return (
     <main>
       <header className="topbar">
@@ -1081,6 +1172,7 @@ export default function Home() {
             <div className="export-actions">
               <button onClick={() => printReport("pre")}><span>☑</span> PDF pré-evento</button>
               <button onClick={() => printReport("post")}><span>▣</span> PDF prestação de contas</button>
+              <button className="mobile-report-button" onClick={() => openMobileReport("pre")}><span>▤</span> Ver no celular</button>
               <button onClick={exportExcel}><span>▦</span> Excel completo</button>
             </div>
             <a className="swift-link" href="https://www.swift.com.br/swift-legado" target="_blank" rel="noreferrer">
@@ -1218,6 +1310,67 @@ export default function Home() {
           </section>
         </div>
       </section>
+
+      {mobileReportOpen && (
+        <div className="mobile-report-backdrop" role="presentation" onClick={() => setMobileReportOpen(false)}>
+          <section className="mobile-report-dialog" role="dialog" aria-modal="true" aria-labelledby="mobile-report-title" onClick={(event) => event.stopPropagation()}>
+            <header className="mobile-report-header">
+              <div>
+                <span>RELATÓRIO PARA CELULAR</span>
+                <h2 id="mobile-report-title">{eventName.trim() || "Meu churrasco"}</h2>
+                <p>{result.guests} convidados · {periods[period].label}</p>
+              </div>
+              <button onClick={() => setMobileReportOpen(false)} aria-label="Fechar relatório para celular">×</button>
+            </header>
+            <div className="mobile-report-tabs" role="tablist" aria-label="Tipo de relatório">
+              <button className={mobileReportMode === "pre" ? "active" : ""} aria-pressed={mobileReportMode === "pre"} onClick={() => { setMobileReportMode("pre"); setShareStatus(""); }}>Pré-evento</button>
+              <button className={mobileReportMode === "post" ? "active" : ""} aria-pressed={mobileReportMode === "post"} onClick={() => { setMobileReportMode("post"); setShareStatus(""); }}>Prestação de contas</button>
+            </div>
+            <div className="mobile-report-body">
+              {mobileReportMode === "pre" ? (
+                <>
+                  {familyOwnDrinks && <div className="mobile-report-callout"><b>🥤 Bebidas por família</b><p>Cada família leva sua própria bebida, conforme sua preferência e consumo.</p></div>}
+                  <section className="mobile-report-section">
+                    <h3>Comprar</h3>
+                    <div className="mobile-checklist">
+                      {result.rows.map((item) => <div key={item.id}><span>{item.name}<small>{meatCategory(item.id)}</small></span><b>{number.format(item.kg)} kg</b></div>)}
+                      {result.extras.filter((item) => !item.provided && !(familyOwnDrinks && item.category === "Bebidas")).map((item) => <div key={item.id}><span>{item.name}<small>{item.category}</small></span><b>{formatQty(item.qty, item.unit)}</b></div>)}
+                      {!result.rows.length && !result.extras.some((item) => !item.provided && !(familyOwnDrinks && item.category === "Bebidas")) && <p className="mobile-report-empty">Nenhum item definido.</p>}
+                    </div>
+                  </section>
+                  <section className="mobile-report-section">
+                    <h3>Pessoas ou famílias levam</h3>
+                    <div className="mobile-checklist responsibilities">
+                      {result.extras.filter((item) => item.provided).map((item) => <div key={item.id}><span>{item.name}<small>{item.responsible || "Responsável a definir"}</small></span><b>{formatQty(item.qty, item.unit)}</b></div>)}
+                      {familyOwnDrinks && <div><span>Bebidas de consumo próprio<small>Cada família</small></span><b>Combinado</b></div>}
+                      {!result.extras.some((item) => item.provided) && !familyOwnDrinks && <p className="mobile-report-empty">Nenhum item atribuído até o momento.</p>}
+                    </div>
+                  </section>
+                </>
+              ) : (
+                <>
+                  <div className="mobile-total-card"><span>Total do churrasco</span><strong>{money.format(result.grandTotal)}</strong><small>{money.format(result.cost)} em proteínas · {money.format(result.extrasCost)} em acompanhamentos</small></div>
+                  <div className="mobile-rate-cards">
+                    <div><span>Por adulto</span><strong>{money.format(result.perAdult)}</strong></div>
+                    <div><span>Por criança</span><strong>{money.format(result.perChild)}</strong></div>
+                  </div>
+                  <section className="mobile-report-section">
+                    <h3>Por família ou grupo</h3>
+                    <div className="mobile-family-list">
+                      {result.familyCharges.map((family) => <div key={family.family}><span><b>{family.family}</b><small>{family.members.join(", ")}</small></span><strong>{money.format(family.total)}</strong></div>)}
+                    </div>
+                  </section>
+                </>
+              )}
+            </div>
+            <div className="mobile-report-actions">
+              <button className="primary" onClick={shareMobileReport}>Compartilhar</button>
+              <button onClick={copyMobileReport}>Copiar para WhatsApp</button>
+            </div>
+            {shareStatus && <p className="mobile-share-status" role="status">{shareStatus}</p>}
+          </section>
+        </div>
+      )}
 
       <section className="saved-section" id="meus-churrascos">
         <div className="saved-shell">

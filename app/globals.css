@@ -214,14 +214,54 @@ legend span { display:inline-grid; place-items:center; width:29px; height:29px; 
 .save-plan-button span { margin-right:5px; }
 .storage-status { margin:0 22px 10px; color:#c0c8c2; font-size:9px; line-height:1.45; text-align:center; }
 .export-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:0 20px 12px; }
-.export-actions button:last-child { grid-column:1 / -1; }
 .export-actions button { border:1px solid #56615a; background:#26322c; color:#fff; padding:12px 8px; cursor:pointer; font-size:9px; font-weight:900; letter-spacing:.5px; text-transform:uppercase; }
 .export-actions button:hover { border-color:#e9a271; color:#ffc18c; }
 .export-actions button span { margin-right:5px; color:#e9a271; }
+.export-actions .mobile-report-button { border-color:#e9a271; color:#ffc18c; }
 .swift-link { display:flex; justify-content:space-between; margin:0 20px; padding:13px 14px; background:var(--orange); color:#211b16; text-decoration:none; font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:.7px; }
 .price-note { color:#778079; font-size:8px; line-height:1.5; padding:0 25px 20px; text-align:center; }
 .print-report { display:none; }
 .family-drinks-row { border-top:1px solid var(--line); background:#fff7ef; }
+.mobile-report-backdrop { position:fixed; inset:0; z-index:120; display:grid; place-items:center; padding:18px; background:rgba(12,18,15,.76); backdrop-filter:blur(4px); }
+.mobile-report-dialog { width:min(100%,560px); max-height:calc(100dvh - 36px); display:flex; flex-direction:column; overflow:hidden; border-top:5px solid var(--red); background:#f7f3eb; box-shadow:0 28px 90px rgba(0,0,0,.38); }
+.mobile-report-header { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; padding:20px 22px 16px; background:var(--ink); color:#fff; }
+.mobile-report-header span { color:#ffc18c; font-size:8px; font-weight:900; letter-spacing:1.4px; }
+.mobile-report-header h2 { margin:6px 0 4px; font:400 27px/1 Georgia; }
+.mobile-report-header p { margin:0; color:#aeb7b1; font-size:9px; }
+.mobile-report-header>button { flex:0 0 auto; width:32px; height:32px; border:1px solid #536058; border-radius:50%; background:transparent; color:#fff; cursor:pointer; font-size:20px; }
+.mobile-report-tabs { display:grid; grid-template-columns:1fr 1fr; padding:10px; border-bottom:1px solid #ddd3c7; background:#fff; }
+.mobile-report-tabs button { min-height:38px; border:0; background:transparent; color:#6e706a; cursor:pointer; font-size:9px; font-weight:900; text-transform:uppercase; }
+.mobile-report-tabs button.active { background:#fff0e8; color:var(--red); }
+.mobile-report-body { min-height:0; overflow:auto; padding:16px; }
+.mobile-report-callout { margin-bottom:14px; padding:13px 14px; border-left:4px solid var(--red); background:#fff0e8; }
+.mobile-report-callout b { color:var(--red); font-size:10px; }
+.mobile-report-callout p { margin:5px 0 0; color:#655f58; font-size:9px; line-height:1.45; }
+.mobile-report-section { margin-top:14px; }
+.mobile-report-section:first-child { margin-top:0; }
+.mobile-report-section h3 { margin:0 0 7px; color:#7a4c3e; font-size:9px; font-weight:900; letter-spacing:1px; text-transform:uppercase; }
+.mobile-checklist,.mobile-family-list { border:1px solid #ddd3c7; background:#fff; }
+.mobile-checklist>div,.mobile-family-list>div { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:11px 12px; border-top:1px solid #ece5dc; }
+.mobile-checklist>div:first-child,.mobile-family-list>div:first-child { border-top:0; }
+.mobile-checklist span,.mobile-checklist small,.mobile-family-list b,.mobile-family-list small { display:block; }
+.mobile-checklist span,.mobile-family-list b { font-size:10px; }
+.mobile-checklist small,.mobile-family-list small { margin-top:3px; color:#8a857e; font-size:8px; line-height:1.35; }
+.mobile-checklist b { flex:0 0 auto; color:var(--red); font-size:10px; }
+.mobile-family-list strong { flex:0 0 auto; color:var(--red); font:400 17px Georgia; }
+.mobile-report-empty { margin:0; padding:17px 12px; color:#7d7972; font-size:9px; }
+.mobile-total-card { padding:20px; background:var(--ink); color:#fff; text-align:center; }
+.mobile-total-card span,.mobile-total-card small { display:block; }
+.mobile-total-card span { color:#ffc18c; font-size:9px; font-weight:900; letter-spacing:1px; text-transform:uppercase; }
+.mobile-total-card strong { display:block; margin:8px 0 5px; font:400 38px Georgia; }
+.mobile-total-card small { color:#aeb7b1; font-size:8px; }
+.mobile-rate-cards { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
+.mobile-rate-cards>div { padding:13px; border:1px solid #ddd3c7; background:#fff; text-align:center; }
+.mobile-rate-cards span,.mobile-rate-cards strong { display:block; }
+.mobile-rate-cards span { color:#77736d; font-size:8px; font-weight:900; text-transform:uppercase; }
+.mobile-rate-cards strong { margin-top:5px; color:var(--red); font:400 21px Georgia; }
+.mobile-report-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:12px 16px; border-top:1px solid #ddd3c7; background:#fff; }
+.mobile-report-actions button { min-height:42px; border:1px solid var(--ink); background:#fff; color:var(--ink); cursor:pointer; font-size:9px; font-weight:900; text-transform:uppercase; }
+.mobile-report-actions button.primary { background:var(--red); border-color:var(--red); color:#fff; }
+.mobile-share-status { margin:0; padding:0 16px 12px; background:#fff; color:#5f655f; font-size:9px; text-align:center; }
 .saved-section { padding:82px 5vw 92px; background:#f4f0e7; border-top:1px solid var(--line); }
 .saved-shell { max-width:1180px; margin:auto; }
 .saved-header { display:flex; align-items:flex-end; justify-content:space-between; gap:35px; margin-bottom:34px; }
@@ -312,6 +352,12 @@ footer>span { font-size:10px; color:#79817c; }
   nav { gap:5px; }
   nav a { padding:9px 3px; font-size:9px; }
   .outline-button { display:none; }
+  .mobile-report-backdrop { align-items:stretch; padding:0; }
+  .mobile-report-dialog { width:100%; max-height:100dvh; border-top:0; }
+  .mobile-report-header { padding:17px 18px 14px; }
+  .mobile-report-header h2 { font-size:24px; }
+  .mobile-report-body { padding:12px; }
+  .mobile-report-actions { padding:10px 12px; }
   .hero { min-height:auto; padding:48px 20px 0; }
   .hero h1 { font-size:clamp(46px,14vw,58px); letter-spacing:-2.2px; }
   .hero p { font-size:15px; line-height:1.55; }

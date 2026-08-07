@@ -74,6 +74,9 @@ test("builds the public GitHub Pages version with the guest list feature", async
   assert.match(page, /className="print-photo"/);
   assert.match(page, /compact-contribution-toggle/);
   assert.match(page, /Família ou responsável por/);
+  assert.match(page, /RELATÓRIO PARA CELULAR/);
+  assert.match(page, /Copiar para WhatsApp/);
+  assert.match(page, /navigator\.share/);
   const preEventReport = page.slice(page.indexOf("pre-event-report"), page.indexOf("post-event-report"));
   assert.doesNotMatch(preEventReport, /money\.format/);
   assert.match(css, /\.guest-add-grid/);
@@ -83,4 +86,6 @@ test("builds the public GitHub Pages version with the guest list feature", async
   assert.match(css, /\.print-photo/);
   assert.match(css, /\.companion-head/);
   assert.match(css, /\.compact-contribution-toggle/);
+  assert.match(css, /\.mobile-report-dialog/);
+  assert.match(css, /\.mobile-report-actions/);
 });
