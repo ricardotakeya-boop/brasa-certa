@@ -3,6 +3,9 @@ export type FamilyRateGuest = {
   name: string;
   family: string;
   type: "adult" | "child";
+  invitedBy?: string;
+  vehiclePlate?: string;
+  accessNote?: string;
 };
 
 export type GuestCharge = FamilyRateGuest & { amount: number };

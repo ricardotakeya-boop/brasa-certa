@@ -12,6 +12,7 @@ pessoa.
 - quantidades e preços editáveis;
 - divisão do custo entre adultos e crianças;
 - itens trazidos por uma família, sem cobrança;
+- lista nominal para autorização e controle de entrada na portaria;
 - salvamento local dos churrascos;
 - exportação para PDF, Excel e backup JSON.
 

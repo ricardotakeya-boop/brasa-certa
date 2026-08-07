@@ -35,6 +35,8 @@ type SavedBarbecue = {
   name: string;
   eventDate: string;
   notes: string;
+  eventLocation?: string;
+  eventContact?: string;
   createdAt: string;
   updatedAt: string;
   adults: number;
@@ -56,7 +58,7 @@ type SavedBarbecue = {
 type MeatCategory = "Bovinos" | "Suínos" | "Frangos";
 
 const STORAGE_KEY = "brasa-certa:churrascos:v1";
-const CURRENT_DATA_VERSION = 3;
+const CURRENT_DATA_VERSION = 4;
 
 const meats: Meat[] = [
   { id: "picanha-legado", name: "Picanha", note: "Legado 1855", price: 89.9, share: 1.15, color: "#8e261c", source: "https://www.swift.com.br/legado" },
@@ -188,16 +190,18 @@ export default function Home() {
   const [reserve, setReserve] = useState(true);
   const [chargeChildren, setChargeChildren] = useState(true);
   const [familyOwnDrinks, setFamilyOwnDrinks] = useState(false);
-  const [printMode, setPrintMode] = useState<"pre" | "post">("post");
+  const [printMode, setPrintMode] = useState<"pre" | "post" | "gate">("post");
   const [mobileReportOpen, setMobileReportOpen] = useState(false);
   const [mobileReportMode, setMobileReportMode] = useState<"pre" | "post">("pre");
   const [shareStatus, setShareStatus] = useState("");
   const [guests, setGuests] = useState<Guest[]>([]);
   const [guestListOpen, setGuestListOpen] = useState(false);
-  const [newGuest, setNewGuest] = useState({ name: "", family: "", type: "adult" as Guest["type"] });
+  const [newGuest, setNewGuest] = useState({ name: "", family: "", type: "adult" as Guest["type"], invitedBy: "", vehiclePlate: "", accessNote: "" });
   const [eventName, setEventName] = useState("Churrasco em família");
   const [eventDate, setEventDate] = useState("");
   const [eventNotes, setEventNotes] = useState("");
+  const [eventLocation, setEventLocation] = useState("");
+  const [eventContact, setEventContact] = useState("");
   const [savedBarbecues, setSavedBarbecues] = useState<SavedBarbecue[]>([]);
   const [activeSavedId, setActiveSavedId] = useState<string | null>(null);
   const [storageStatus, setStorageStatus] = useState("");
@@ -217,13 +221,6 @@ export default function Home() {
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
-
-  useEffect(() => {
-    const namedAdults = guests.filter((guest) => guest.type === "adult").length;
-    const namedChildren = guests.filter((guest) => guest.type === "child").length;
-    setAdults((current) => Math.max(current, namedAdults));
-    setChildren((current) => Math.max(current, namedChildren));
-  }, [guests]);
 
   const result = useMemo(() => {
     const p = periods[period];
@@ -320,15 +317,23 @@ export default function Home() {
       name,
       family,
       type: newGuest.type,
+      invitedBy: newGuest.invitedBy.trim(),
+      vehiclePlate: newGuest.vehiclePlate.trim().toUpperCase(),
+      accessNote: newGuest.accessNote.trim(),
     };
     setGuests((current) => [...current, guest]);
     if (guest.type === "adult" && result.namedAdults >= adults) setAdults((current) => Math.min(500, current + 1));
     if (guest.type === "child" && result.namedChildren >= children) setChildren((current) => Math.min(500, current + 1));
-    setNewGuest((current) => ({ name: "", family: current.family, type: current.type }));
+    setNewGuest((current) => ({ ...current, name: "", vehiclePlate: "", accessNote: "" }));
   }
 
   function updateGuest(id: string, changes: Partial<Guest>) {
-    setGuests((current) => current.map((guest) => guest.id === id ? { ...guest, ...changes } : guest));
+    const next = guests.map((guest) => guest.id === id ? { ...guest, ...changes } : guest);
+    setGuests(next);
+    const namedAdults = next.filter((guest) => guest.type === "adult").length;
+    const namedChildren = next.filter((guest) => guest.type === "child").length;
+    setAdults((current) => Math.max(current, namedAdults));
+    setChildren((current) => Math.max(current, namedChildren));
   }
 
   function removeGuest(id: string) {
@@ -390,6 +395,8 @@ export default function Home() {
       name: eventName.trim() || fallbackName,
       eventDate,
       notes: eventNotes.trim(),
+      eventLocation: eventLocation.trim(),
+      eventContact: eventContact.trim(),
       createdAt,
       updatedAt: new Date().toISOString(),
       adults,
@@ -451,10 +458,12 @@ export default function Home() {
     setFamilyOwnDrinks(false);
     setGuests([]);
     setGuestListOpen(false);
-    setNewGuest({ name: "", family: "", type: "adult" });
+    setNewGuest({ name: "", family: "", type: "adult", invitedBy: "", vehiclePlate: "", accessNote: "" });
     setEventName("");
     setEventDate("");
     setEventNotes("");
+    setEventLocation("");
+    setEventContact("");
     setActiveSavedId(null);
     setMeatMenuOpen(false);
     setAccompanimentMenuOpen(false);
@@ -473,6 +482,8 @@ export default function Home() {
     setEventName(record.name);
     setEventDate(record.eventDate);
     setEventNotes(record.notes);
+    setEventLocation(record.eventLocation ?? "");
+    setEventContact(record.eventContact ?? "");
     setAdults(record.adults);
     setChildren(record.children);
     setPeriod(record.period);
@@ -683,7 +694,7 @@ export default function Home() {
     }
   }
 
-  function printReport(mode: "pre" | "post") {
+  function printReport(mode: "pre" | "post" | "gate") {
     setPrintMode(mode);
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => window.print());
@@ -857,6 +868,14 @@ export default function Home() {
                 <span>Observações</span>
                 <input value={eventNotes} onChange={(e) => setEventNotes(e.target.value)} placeholder="Ex.: levar caixa térmica" maxLength={160} />
               </label>
+              <label>
+                <span>Local do evento</span>
+                <input value={eventLocation} onChange={(e) => setEventLocation(e.target.value)} placeholder="Ex.: Salão de festas, bloco B" maxLength={100} />
+              </label>
+              <label>
+                <span>Contato responsável</span>
+                <input value={eventContact} onChange={(e) => setEventContact(e.target.value)} placeholder="Ex.: Ricardo · (11) 99999-9999" maxLength={100} />
+              </label>
             </div>
             <fieldset>
               <legend><span>1</span> Quantas pessoas?</legend>
@@ -896,13 +915,26 @@ export default function Home() {
                           <option value="child">Criança</option>
                         </select>
                       </label>
+                      <label>
+                        <span>Convidado por</span>
+                        <input value={newGuest.invitedBy} onChange={(e) => setNewGuest({ ...newGuest, invitedBy: e.target.value })} placeholder="Ex.: Ricardo" maxLength={60} />
+                      </label>
+                      <label>
+                        <span>Placa (opcional)</span>
+                        <input value={newGuest.vehiclePlate} onChange={(e) => setNewGuest({ ...newGuest, vehiclePlate: e.target.value.toUpperCase() })} placeholder="ABC1D23" maxLength={8} />
+                      </label>
+                      <label>
+                        <span>Observação da portaria</span>
+                        <input value={newGuest.accessNote} onChange={(e) => setNewGuest({ ...newGuest, accessNote: e.target.value })} placeholder="Ex.: prestador ou acessibilidade" maxLength={100} />
+                      </label>
                       <button onClick={addGuest} disabled={!newGuest.name.trim() || !newGuest.family.trim()}>Adicionar convidado</button>
                     </div>
                     {guests.length > 0 ? (
                       <div className="guest-list">
                         <div className="guest-list-head"><span>Nome</span><span>Família</span><span>Tipo</span><span>Cota</span><span /></div>
                         {guests.map((guest) => (
-                          <div className="guest-row" key={guest.id}>
+                          <div className="guest-entry" key={guest.id}>
+                          <div className="guest-row">
                             <input aria-label={`Nome de ${guest.name}`} value={guest.name} onChange={(e) => updateGuest(guest.id, { name: e.target.value })} maxLength={60} />
                             <input aria-label={`Família de ${guest.name}`} value={guest.family} onChange={(e) => updateGuest(guest.id, { family: e.target.value })} maxLength={60} />
                             <select aria-label={`Tipo de ${guest.name}`} value={guest.type} onChange={(e) => updateGuest(guest.id, { type: e.target.value as Guest["type"] })}>
@@ -911,6 +943,12 @@ export default function Home() {
                             </select>
                             <output>{money.format(guest.type === "child" ? result.perChild : result.perAdult)}</output>
                             <button aria-label={`Remover ${guest.name}`} onClick={() => removeGuest(guest.id)}>×</button>
+                          </div>
+                          <div className="guest-access-fields">
+                            <input aria-label={`Convidado por, ${guest.name}`} value={guest.invitedBy ?? ""} onChange={(e) => updateGuest(guest.id, { invitedBy: e.target.value })} placeholder="Convidado por" maxLength={60} />
+                            <input aria-label={`Placa de ${guest.name}`} value={guest.vehiclePlate ?? ""} onChange={(e) => updateGuest(guest.id, { vehiclePlate: e.target.value.toUpperCase() })} placeholder="Placa do veículo" maxLength={8} />
+                            <input aria-label={`Observação da portaria para ${guest.name}`} value={guest.accessNote ?? ""} onChange={(e) => updateGuest(guest.id, { accessNote: e.target.value })} placeholder="Observação da portaria" maxLength={100} />
+                          </div>
                           </div>
                         ))}
                       </div>
@@ -1172,6 +1210,7 @@ export default function Home() {
             <div className="export-actions">
               <button onClick={() => printReport("pre")}><span>☑</span> PDF pré-evento</button>
               <button onClick={() => printReport("post")}><span>▣</span> PDF prestação de contas</button>
+              <button onClick={() => printReport("gate")} disabled={!guests.length}><span>⌂</span> PDF para portaria</button>
               <button className="mobile-report-button" onClick={() => openMobileReport("pre")}><span>▤</span> Ver no celular</button>
               <button onClick={exportExcel}><span>▦</span> Excel completo</button>
             </div>
@@ -1236,6 +1275,45 @@ export default function Home() {
               </>
             )}
             <footer>Lista para alinhamento antes do evento. Este relatório não apresenta preços.</footer>
+          </section>
+          <section className={`print-report gate-report ${printMode === "gate" ? "active-print" : ""}`}>
+            <header>
+              <img className="print-photo" src="mestre-da-brasa.png" alt="Mestre churrasqueiro do Brasa Certa" />
+              <span>BRASA CERTA · CONTROLE DE ACESSO</span>
+              <h1>Lista para portaria</h1>
+              <p>{eventName.trim() || "Meu churrasco"} · {eventDate ? new Date(`${eventDate}T12:00:00`).toLocaleDateString("pt-BR") : "data a definir"}</p>
+            </header>
+            <div className="gate-event-details">
+              <p><b>Local</b><span>{eventLocation.trim() || "Não informado"}</span></p>
+              <p><b>Responsável</b><span>{eventContact.trim() || "Não informado"}</span></p>
+              <p><b>Total autorizado</b><span>{guests.length} pessoa(s)</span></p>
+            </div>
+            <h2>Convidados autorizados</h2>
+            <table>
+              <thead><tr><th>Entrada</th><th>Nome</th><th>Família ou grupo</th><th>Tipo</th><th>Convidado por</th><th>Placa</th><th>Observação</th></tr></thead>
+              <tbody>
+                {[...guests].sort((a, b) =>
+                  a.family.localeCompare(b.family, "pt-BR", { sensitivity: "base" })
+                  || a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" })
+                ).map((guest) => (
+                  <tr key={guest.id}>
+                    <td className="gate-check">□</td>
+                    <td><b>{guest.name}</b></td>
+                    <td>{guest.family}</td>
+                    <td>{guest.type === "adult" ? "Adulto" : "Criança"}</td>
+                    <td>{guest.invitedBy || "—"}</td>
+                    <td>{guest.vehiclePlate || "—"}</td>
+                    <td>{guest.accessNote || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="gate-summary">
+              <span>{guests.filter((guest) => guest.type === "adult").length} adulto(s)</span>
+              <span>{guests.filter((guest) => guest.type === "child").length} criança(s)</span>
+              <span>{guests.filter((guest) => guest.vehiclePlate?.trim()).length} veículo(s)</span>
+            </div>
+            <footer>Documento destinado exclusivamente ao controle de acesso do evento. Dados armazenados localmente neste aparelho.</footer>
           </section>
           <section className={`print-report post-event-report ${printMode === "post" ? "active-print" : ""}`}>
             <header>
