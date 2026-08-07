@@ -56,7 +56,7 @@ type SavedBarbecue = {
 type MeatCategory = "Bovinos" | "Suínos" | "Frangos";
 
 const STORAGE_KEY = "brasa-certa:churrascos:v1";
-const CURRENT_DATA_VERSION = 2;
+const CURRENT_DATA_VERSION = 3;
 
 const meats: Meat[] = [
   { id: "picanha-legado", name: "Picanha", note: "Legado 1855", price: 89.9, share: 1.15, color: "#8e261c", source: "https://www.swift.com.br/legado" },
@@ -109,7 +109,7 @@ const accompaniments: Accompaniment[] = [
   { id: "pao-alho", name: "Pão de alho", category: "Tradicionais", icon: "🥖", note: "1 pacote = 6 pães de alho", unit: "pacote", price: 11.88, quantity: (g) => Math.ceil((g * 1.5) / 6) },
   { id: "arroz", name: "Arroz", category: "Tradicionais", icon: "🍚", note: "60 g por pessoa", unit: "kg", price: 8.5, quantity: (g) => g * .06 },
   { id: "farofa", name: "Farofa", category: "Tradicionais", icon: "🥣", note: "40 g por pessoa", unit: "kg", price: 21.9, quantity: (g) => g * .04 },
-  { id: "queijo", name: "Queijo coalho", category: "Tradicionais", icon: "🧀", note: "2 espetos por pessoa", unit: "kg", price: 54.9, quantity: (g) => g * .08 },
+  { id: "queijo", name: "Queijo coalho", category: "Tradicionais", icon: "🧀", note: "1 pacote = 7 espetos · 2 por pessoa", unit: "pacote", price: 29.9, quantity: (g) => Math.ceil((g * 2) / 7) },
   { id: "vinagrete", name: "Vinagrete", category: "Saladas e legumes", icon: "🍅", note: "80 g por pessoa", unit: "kg", price: 13.9, quantity: (g) => g * .08 },
   { id: "legumes", name: "Legumes na brasa", category: "Saladas e legumes", icon: "🥕", note: "Abobrinha, cebola e pimentão", unit: "kg", price: 14.9, quantity: (g) => g * .1 },
   { id: "maionese", name: "Salada de maionese", category: "Saladas e legumes", icon: "🥔", note: "100 g por pessoa", unit: "kg", price: 24.9, quantity: (g) => g * .1 },
@@ -139,7 +139,9 @@ const formatQty = (qty: number, unit: string) => {
 
 function migrateSavedBarbecue(record: SavedBarbecue): SavedBarbecue {
   if ((record.dataVersion ?? 1) >= CURRENT_DATA_VERSION) return record;
-  const breadEdits = record.accompanimentEdits?.["pao-alho"];
+  const previousVersion = record.dataVersion ?? 1;
+  const breadEdits = previousVersion < 2 ? record.accompanimentEdits?.["pao-alho"] : undefined;
+  const cheeseEdits = previousVersion < 3 ? record.accompanimentEdits?.["queijo"] : undefined;
   return {
     ...record,
     dataVersion: CURRENT_DATA_VERSION,
@@ -151,6 +153,15 @@ function migrateSavedBarbecue(record: SavedBarbecue): SavedBarbecue {
               ...breadEdits,
               qty: breadEdits.qty === undefined ? undefined : Math.ceil(breadEdits.qty / 6),
               price: breadEdits.price === undefined ? undefined : breadEdits.price * 6,
+            },
+          }
+        : {}),
+      ...(cheeseEdits
+        ? {
+            queijo: {
+              ...cheeseEdits,
+              qty: cheeseEdits.qty === undefined ? undefined : Math.ceil(cheeseEdits.qty / .385),
+              price: cheeseEdits.price === undefined ? undefined : cheeseEdits.price * .385,
             },
           }
         : {}),
@@ -1083,6 +1094,7 @@ export default function Home() {
           </aside>
           <section className={`print-report pre-event-report ${printMode === "pre" ? "active-print" : ""}`}>
             <header>
+              <img className="print-photo" src="mestre-da-brasa.png" alt="Mestre churrasqueiro do Brasa Certa" />
               <span>BRASA CERTA · PRÉ-EVENTO</span>
               <h1>Lista de organização</h1>
               <p>
@@ -1139,6 +1151,7 @@ export default function Home() {
           </section>
           <section className={`print-report post-event-report ${printMode === "post" ? "active-print" : ""}`}>
             <header>
+              <img className="print-photo" src="mestre-da-brasa.png" alt="Mestre churrasqueiro do Brasa Certa" />
               <span>BRASA CERTA · PÓS-EVENTO</span>
               <h1>Prestação de contas</h1>
               <p>

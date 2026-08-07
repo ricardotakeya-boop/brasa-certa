@@ -70,7 +70,13 @@ test("builds the public GitHub Pages version with the guest list feature", async
   assert.match(page, /O que será comprado/);
   assert.match(page, /Quanto ficou por pessoa/);
   assert.match(page, /Quanto ficou por família ou grupo/);
+  assert.match(page, /1 pacote = 7 espetos/);
+  assert.match(page, /className="print-photo"/);
+  const preEventReport = page.slice(page.indexOf("pre-event-report"), page.indexOf("post-event-report"));
+  assert.doesNotMatch(preEventReport, /money\.format/);
   assert.match(css, /\.guest-add-grid/);
   assert.match(css, /\.family-breakdown/);
   assert.match(css, /\.print-report\.active-print/);
+  assert.match(css, /#root > main > \*/);
+  assert.match(css, /\.print-photo/);
 });

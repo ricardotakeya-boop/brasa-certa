@@ -364,21 +364,24 @@ footer>span { font-size:10px; color:#79817c; }
 }
 
 @media print {
-  @page { size:A4; margin:14mm; }
+  @page { size:A4; margin:11mm; }
   body { background:#fff !important; color:#111 !important; }
-  body > main > * { display:none !important; }
-  body > main > .calculator-section { display:block !important; padding:0 !important; }
+  #root > main > * { display:none !important; }
+  #root > main > .calculator-section { display:block !important; padding:0 !important; }
   .calculator-section > * { display:none !important; }
   .calculator-section > .calculator-grid { display:block !important; max-width:none !important; }
   .calculator-grid > * { display:none !important; }
   .calculator-grid > .print-report { display:none !important; font-family:Arial, sans-serif; color:#111; }
   .calculator-grid > .print-report.active-print { display:block !important; }
-  .print-report header { display:block !important; padding:0 0 18px; border-bottom:3px solid #b53b28; background:none; color:#111; }
-  .print-report header>span { color:#b53b28; font-size:11px; font-weight:900; letter-spacing:2px; }
+  .print-report header { display:grid !important; grid-template-columns:1fr 68px; grid-template-rows:auto auto auto; column-gap:16px; min-height:82px; padding:0 0 12px; border-bottom:3px solid #b53b28; background:none; color:#111; break-inside:avoid; }
+  .print-report header>span,.print-report header>h1,.print-report header>p { grid-column:1; }
+  .print-report header>span { color:#b53b28; font-size:10px; font-weight:900; letter-spacing:1.7px; }
+  .print-photo { grid-column:2; grid-row:1 / 4; width:68px; height:82px; display:block !important; object-fit:cover; object-position:center top; border-radius:34px 34px 5px 5px; }
   .print-report h1 { margin:5px 0; font:400 34px Georgia; }
   .print-report header p { margin:0; color:#555; font-size:11px; }
   .print-report h2 { margin:24px 0 8px; color:#b53b28; font:700 15px Georgia; }
   .print-report table { width:100%; border-collapse:collapse; font-size:9px; }
+  .print-report tr { break-inside:avoid; }
   .print-report th { padding:7px 6px; background:#f1ede5; text-align:left; border-bottom:1px solid #aaa; }
   .print-report td { padding:7px 6px; border-bottom:1px solid #ddd; }
   .print-report th:nth-last-child(-n+3),.print-report td:nth-last-child(-n+3) { text-align:right; }
