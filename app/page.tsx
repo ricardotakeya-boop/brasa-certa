@@ -943,37 +943,33 @@ export default function Home() {
                 )}
               </div>
               <div className="editable-items companions">
-                <div className="editable-head"><span>Acompanhamento</span><span>Quantidade</span><span>Valor unitário</span><span /></div>
+                <div className="editable-head companion-head"><span>Acompanhamento</span><span>Quantidade</span><span>Valor unitário</span><span>Família traz?</span><span>Responsável</span><span /></div>
                 {result.extras.map((item) => (
                   <div className="editable-row companion-editable-row" key={item.id}>
                     <div className="editable-name"><span className="companion-icon">{item.icon}</span><span><b>{item.name}</b><small>{item.category}</small></span></div>
                     <label><small>Qtd. ({item.unit === "pacote" ? "pacotes" : item.unit})</small><input type="number" min="0" step={item.unit === "pacote" || item.unit === "pct." || item.unit === "un." ? "1" : ".1"} value={Number(item.qty.toFixed(2))} onChange={(e) => updateAccompaniment(item.id, "qty", Number(e.target.value))} /></label>
                     <label><small>R$ por {item.unit}</small><input type="number" min="0" step=".01" value={item.price} onChange={(e) => updateAccompaniment(item.id, "price", Number(e.target.value))} /></label>
+                    <label className={`compact-contribution-toggle ${item.provided ? "active" : ""}`} title="Quando marcado, o item não entra no rateio.">
+                      <input
+                        type="checkbox"
+                        checked={item.provided}
+                        onChange={(e) => updateContribution(item.id, { provided: e.target.checked })}
+                        aria-label={`Uma família traz ${item.name}`}
+                      />
+                      <span>Família traz</span>
+                    </label>
+                    <label className="responsible-input compact-responsible">
+                      <span>Responsável</span>
+                      <input
+                        value={item.responsible}
+                        disabled={!item.provided}
+                        onChange={(e) => updateContribution(item.id, { responsible: e.target.value })}
+                        placeholder={item.provided ? "Ex.: Família Takeya" : "—"}
+                        aria-label={`Família ou responsável por ${item.name}`}
+                        maxLength={80}
+                      />
+                    </label>
                     <button className="remove-item" onClick={() => toggleAccompaniment(item.id)} aria-label={`Remover ${item.name}`}>×</button>
-                    <div className="contribution-controls" aria-label={`Responsável pelo acompanhamento ${item.name}`}>
-                      <div className="contribution-item-reference">
-                        <span>RESPONSÁVEL PELO ACOMPANHAMENTO</span>
-                        <b>{item.icon} {item.name}</b>
-                      </div>
-                      <label className="contribution-toggle">
-                        <input
-                          type="checkbox"
-                          checked={item.provided}
-                          onChange={(e) => updateContribution(item.id, { provided: e.target.checked })}
-                        />
-                        <span><b>Uma família traz {item.name}</b><small>Manter a quantidade, mas não cobrar no rateio.</small></span>
-                      </label>
-                      <label className="responsible-input">
-                        <span>Família ou responsável</span>
-                        <input
-                          value={item.responsible}
-                          disabled={!item.provided}
-                          onChange={(e) => updateContribution(item.id, { responsible: e.target.value })}
-                          placeholder={item.provided ? "Ex.: Família Takeya" : "Marque a opção ao lado"}
-                          maxLength={80}
-                        />
-                      </label>
-                    </div>
                   </div>
                 ))}
               </div>

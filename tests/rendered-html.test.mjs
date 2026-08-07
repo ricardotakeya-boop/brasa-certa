@@ -72,6 +72,8 @@ test("builds the public GitHub Pages version with the guest list feature", async
   assert.match(page, /Quanto ficou por família ou grupo/);
   assert.match(page, /1 pacote = 7 espetos/);
   assert.match(page, /className="print-photo"/);
+  assert.match(page, /compact-contribution-toggle/);
+  assert.match(page, /Família ou responsável por/);
   const preEventReport = page.slice(page.indexOf("pre-event-report"), page.indexOf("post-event-report"));
   assert.doesNotMatch(preEventReport, /money\.format/);
   assert.match(css, /\.guest-add-grid/);
@@ -79,4 +81,6 @@ test("builds the public GitHub Pages version with the guest list feature", async
   assert.match(css, /\.print-report\.active-print/);
   assert.match(css, /#root > main > \*/);
   assert.match(css, /\.print-photo/);
+  assert.match(css, /\.companion-head/);
+  assert.match(css, /\.compact-contribution-toggle/);
 });
