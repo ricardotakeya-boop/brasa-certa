@@ -1227,6 +1227,10 @@ export default function Home() {
               <p>
                 {eventName.trim() || "Meu churrasco"} · {eventDate ? new Date(`${eventDate}T12:00:00`).toLocaleDateString("pt-BR") : "data a definir"} · {result.guests} convidados · {periods[period].label}
               </p>
+              <div className="pre-event-header-details">
+                <p><b>Local do evento</b><span>{eventLocation.trim() || "Não informado"}</span></p>
+                <p><b>Contato</b><span>{eventContact.trim() || "Não informado"}</span></p>
+              </div>
             </header>
             {familyOwnDrinks && (
               <div className="pre-event-message">
